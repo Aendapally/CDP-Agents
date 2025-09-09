@@ -1,6 +1,6 @@
-# CDP-Agents: Customer Data Platform AI Agents
+# CDP-Agents: Customer Developer Platform Using AI Agents
 
-A comprehensive toolkit for building AI agents specialized in Customer Data Platform (CDP) architecture design and implementation, built on the Strands platform.
+A comprehensive toolkit for building AI agents specialized in Customer Developer Platform (CDP) architecture design and implementation, built on the Strands platform.
 
 ##  Overview
 
@@ -47,7 +47,7 @@ CDP-Agents/
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Aendapally/CDP-Agents
 cd CDP-Agents
 
 # Create and activate virtual environment
