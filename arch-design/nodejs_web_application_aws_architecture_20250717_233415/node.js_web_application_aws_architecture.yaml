@@ -1,0 +1,511 @@
+diagram:
+  name: Node.js Web Application AWS Architecture
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: '0.6'
+      ranksep: '1.2'
+    node:
+      shape: box
+      style: rounded,filled
+      fillcolor: lightblue
+    edge:
+      style: solid
+      color: darkblue
+      fontsize: '10'
+  resources:
+  - id: route_53
+    name: Route 53
+    type: aws.network.Route53
+    description: DNS Management
+    relates:
+    - to: ecs
+      direction: outgoing
+      label: Route Request
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: application_load_balancer
+    name: Application Load Balancer
+    type: aws.network.ElbApplicationLoadBalancer
+    description: Load Balancing
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: network_load_balancer
+    name: Network Load Balancer
+    type: aws.network.ElbNetworkLoadBalancer
+    description: Load Balancing
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: vpc
+    name: VPC
+    type: aws.network.VPC
+    description: Virtual Private Cloud
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: privatelink
+    name: PrivateLink
+    type: aws.network.Privatelink
+    description: Private Connectivity
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_waf
+    name: AWS WAF
+    type: aws.security.WAF
+    description: Web Application Firewall
+    relates:
+    - to: route_53
+      direction: outgoing
+      label: Security Filter
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: certificate_manager
+    name: Certificate Manager
+    type: aws.security.CertificateManager
+    description: SSL/TLS Certificates
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_kms
+    name: AWS KMS
+    type: aws.security.KMS
+    description: Key Management
+    relates:
+    - to: network_load_balancer
+      direction: outgoing
+      label: Security Filter
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: secrets_manager
+    name: Secrets Manager
+    type: aws.security.SecretsManager
+    description: Secrets Management
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_iam
+    name: AWS IAM
+    type: aws.security.IAM
+    description: Identity and Access Management
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: ecs
+    name: ECS
+    type: aws.compute.ECS
+    description: Container Orchestration
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: fargate
+    name: Fargate
+    type: aws.compute.Fargate
+    description: Serverless Containers
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: dynamodb
+    name: DynamoDB
+    type: aws.database.Dynamodb
+    description: NoSQL Database
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_backup
+    name: AWS Backup
+    type: aws.storage.Backup
+    description: Backup Service
+  - id: ecr
+    name: ECR
+    type: aws.compute.ECR
+    description: Container Registry
+    relates:
+    - to: private_database
+      direction: outgoing
+      label: Database Query
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: internet
+    name: Internet
+    type: generic.network.Internet
+    description: Public Internet
+    relates:
+    - to: 'ecs
+
+        service'
+      direction: outgoing
+      label: Route Request
+  - id: users
+    name: Users
+    type: aws.general.Users
+    description: End Users
+    relates:
+    - to: your_network
+      direction: outgoing
+      label: Data Flow
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_architecture
+    name: aws architecture
+    type: aws.general.General
+    description: 'Custom or inferred service: aws architecture'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: backend_service
+    name: backend service
+    type: aws.general.General
+    description: 'Custom or inferred service: backend service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: for_aws
+    name: for aws
+    type: aws.general.General
+    description: 'Custom or inferred service: for aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: on_aws
+    name: on aws
+    type: aws.general.General
+    description: 'Custom or inferred service: on aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: via_aws
+    name: via aws
+    type: aws.general.General
+    description: 'Custom or inferred service: via aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_privatelink
+    name: aws privatelink
+    type: aws.general.General
+    description: 'Custom or inferred service: aws privatelink'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: from_aws
+    name: from aws
+    type: aws.general.General
+    description: 'Custom or inferred service: from aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: secure_aws
+    name: secure aws
+    type: aws.general.General
+    description: 'Custom or inferred service: secure aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_cloudtrail
+    name: aws cloudtrail
+    type: aws.general.General
+    description: 'Custom or inferred service: aws cloudtrail'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_x
+    name: aws x
+    type: aws.general.General
+    description: 'Custom or inferred service: aws x'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_secrets
+    name: aws secrets
+    type: aws.general.General
+    description: 'Custom or inferred service: aws secrets'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: detailed_service
+    name: detailed service
+    type: aws.general.General
+    description: 'Custom or inferred service: detailed service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: private_database
+    name: private database
+    type: aws.database.RDS
+    description: 'Custom or inferred service: private database'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: for_network
+    name: for network
+    type: aws.network.VPC
+    description: 'Custom or inferred service: for network'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_fargate
+    name: aws fargate
+    type: aws.general.General
+    description: 'Custom or inferred service: aws fargate'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'ecs
+
+      service'
+    name: 'ecs
+
+      service'
+    type: aws.compute.EC2
+    description: 'Custom or inferred service: ecs
+
+      service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: each_service
+    name: each service
+    type: aws.general.General
+    description: 'Custom or inferred service: each service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'endpoint
+
+      service'
+    name: 'endpoint
+
+      service'
+    type: aws.general.General
+    description: 'Custom or inferred service: endpoint
+
+      service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_cloud
+    name: aws cloud
+    type: aws.general.General
+    description: 'Custom or inferred service: aws cloud'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: for_service
+    name: for service
+    type: aws.general.General
+    description: 'Custom or inferred service: for service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: endpoint_service
+    name: endpoint service
+    type: aws.general.General
+    description: 'Custom or inferred service: endpoint service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: permitted_aws
+    name: permitted aws
+    type: aws.general.General
+    description: 'Custom or inferred service: permitted aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: with_aws
+    name: with aws
+    type: aws.general.General
+    description: 'Custom or inferred service: with aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'protection
+
+
+      aws'
+    name: 'protection
+
+
+      aws'
+    type: aws.general.General
+    description: 'Custom or inferred service: protection
+
+
+      aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: store_database
+    name: store database
+    type: aws.database.RDS
+    description: 'Custom or inferred service: store database'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'secrets
+
+
+      aws'
+    name: 'secrets
+
+
+      aws'
+    type: aws.general.General
+    description: 'Custom or inferred service: secrets
+
+
+      aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'certificates
+
+
+      aws'
+    name: 'certificates
+
+
+      aws'
+    type: aws.general.General
+    description: 'Custom or inferred service: certificates
+
+
+      aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'health
+
+
+      aws'
+    name: 'health
+
+
+      aws'
+    type: aws.general.General
+    description: 'Custom or inferred service: health
+
+
+      aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_customer
+    name: aws customer
+    type: aws.general.General
+    description: 'Custom or inferred service: aws customer'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: your_network
+    name: your network
+    type: aws.network.VPC
+    description: 'Custom or inferred service: your network'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: within_aws
+    name: within aws
+    type: aws.general.General
+    description: 'Custom or inferred service: within aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: cloudtrail
+    name: CloudTrail
+    type: aws.general.General
+    description: 'Custom or inferred service: CloudTrail'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: cloudwatch
+    name: CloudWatch
+    type: aws.management.Cloudwatch
+    description: 'Custom or inferred service: CloudWatch'
+  - id: waf
+    name: WAF
+    type: aws.security.IAM
+    description: 'Custom or inferred service: WAF'
+    relates:
+    - to: route_53
+      direction: outgoing
+      label: Security Filter
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: http
+    name: HTTP
+    type: aws.general.General
+    description: 'Custom or inferred service: HTTP'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: acl
+    name: ACL
+    type: aws.general.General
+    description: 'Custom or inferred service: ACL'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: nlb
+    name: NLB
+    type: aws.general.General
+    description: 'Custom or inferred service: NLB'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring

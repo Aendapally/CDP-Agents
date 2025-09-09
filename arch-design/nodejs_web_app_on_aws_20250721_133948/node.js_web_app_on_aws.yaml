@@ -1,0 +1,170 @@
+diagram:
+  name: Node.js Web App on AWS
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: '0.6'
+      ranksep: '1.2'
+    node:
+      shape: box
+      style: rounded,filled
+      fillcolor: lightblue
+    edge:
+      style: solid
+      color: darkblue
+      fontsize: '10'
+  resources:
+  - id: cloudfront
+    name: CloudFront
+    type: aws.network.CloudFront
+    description: Content Delivery Network
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: route_53
+    name: Route 53
+    type: aws.network.Route53
+    description: DNS Management
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: application_load_balancer
+    name: Application Load Balancer
+    type: aws.network.ElbApplicationLoadBalancer
+    description: Load Balancing
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: vpc
+    name: VPC
+    type: aws.network.VPC
+    description: Virtual Private Cloud
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: internet_gateway
+    name: Internet Gateway
+    type: aws.network.InternetGateway
+    description: Internet Access
+    relates:
+    - to: internet
+      direction: outgoing
+      label: Network Flow
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_waf
+    name: AWS WAF
+    type: aws.security.WAF
+    description: Web Application Firewall
+    relates:
+    - to: cloudfront
+      direction: outgoing
+      label: Security Filter
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: secrets_manager
+    name: Secrets Manager
+    type: aws.security.SecretsManager
+    description: Secrets Management
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_iam
+    name: AWS IAM
+    type: aws.security.IAM
+    description: Identity and Access Management
+  - id: ec2
+    name: EC2
+    type: aws.compute.EC2
+    description: Virtual Servers
+    relates:
+    - to: rds
+      direction: outgoing
+      label: Database Query
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: rds
+    name: RDS
+    type: aws.database.RDS
+    description: Relational Database
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: elasticache
+    name: ElastiCache
+    type: aws.database.ElastiCache
+    description: In-Memory Cache
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: s3
+    name: S3
+    type: aws.storage.S3
+    description: Object Storage
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_backup
+    name: AWS Backup
+    type: aws.storage.Backup
+    description: Backup Service
+  - id: ecr
+    name: ECR
+    type: aws.compute.ECR
+    description: Container Registry
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: internet
+    name: Internet
+    type: generic.network.Internet
+    description: Public Internet
+  - id: rds_database
+    name: rds database
+    type: aws.database.RDS
+    description: 'Custom or inferred service: rds database'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: cloudwatch
+    name: CloudWatch
+    type: aws.management.Cloudwatch
+    description: 'Custom or inferred service: CloudWatch'
+  - id: cloudformation
+    name: CloudFormation
+    type: aws.general.General
+    description: 'Custom or inferred service: CloudFormation'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: waf
+    name: WAF
+    type: aws.security.IAM
+    description: 'Custom or inferred service: WAF'
+    relates:
+    - to: cloudfront
+      direction: outgoing
+      label: Security Filter
+    - to: route_53
+      direction: outgoing
+      label: Security Filter
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring

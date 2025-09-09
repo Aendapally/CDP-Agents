@@ -1,0 +1,211 @@
+diagram:
+  name: "Node.js Web Application AWS Architecture"
+  direction: "left-to-right"
+  format: "png"
+  open: true
+  resources:
+    # Internet and External Access
+    - id: internet
+      name: "Internet Users"
+      type: "generic.network.Internet"
+      
+    - id: aws_customers
+      name: "AWS Customers"
+      type: "aws.general.Client"
+      
+    # Content Delivery and Security
+    - id: cloudfront
+      name: "CloudFront CDN"
+      type: "aws.network.CloudFront"
+      relates:
+        - to: waf
+          direction: "outgoing"
+          label: "Web Traffic"
+          
+    - id: waf
+      name: "AWS WAF"
+      type: "aws.security.WAF"
+      relates:
+        - to: alb
+          direction: "outgoing"
+          label: "Filtered Traffic"
+          
+    - id: shield
+      name: "AWS Shield"
+      type: "aws.security.Shield"
+      relates:
+        - to: alb
+          direction: "outgoing"
+          label: "DDoS Protection"
+          
+    # Load Balancing
+    - id: alb
+      name: "Application Load Balancer"
+      type: "aws.network.ElbApplicationLoadBalancer"
+      relates:
+        - to: nodejs_app
+          direction: "outgoing"
+          label: "HTTPS (443)"
+          
+    # VPC and Networking
+    - id: vpc
+      name: "VPC"
+      type: "aws.network.VPC"
+      
+    - id: public_subnet
+      name: "Public Subnet"
+      type: "aws.network.PublicSubnet"
+      
+    - id: private_subnet
+      name: "Private Subnet"
+      type: "aws.network.PrivateSubnet"
+      
+    - id: nat_gateway
+      name: "NAT Gateway"
+      type: "aws.network.NATGateway"
+      
+    - id: internet_gateway
+      name: "Internet Gateway"
+      type: "aws.network.InternetGateway"
+      
+    # Application Layer
+    - id: nodejs_app
+      name: "Node.js Application"
+      type: "aws.compute.ECS"
+      relates:
+        - to: backend_service1
+          direction: "outgoing"
+          label: "API Calls"
+        - to: backend_service2
+          direction: "outgoing"
+          label: "API Calls"
+        - to: backend_service3
+          direction: "outgoing"
+          label: "API Calls"
+        - to: dynamodb
+          direction: "outgoing"
+          label: "Database Access"
+          
+    - id: fargate
+      name: "AWS Fargate"
+      type: "aws.compute.Fargate"
+      
+    # Backend Services
+    - id: backend_service1
+      name: "Backend Service 1"
+      type: "aws.compute.ECS"
+      relates:
+        - to: dynamodb
+          direction: "outgoing"
+          label: "Read/Write"
+          
+    - id: backend_service2
+      name: "Backend Service 2"
+      type: "aws.compute.ECS"
+      relates:
+        - to: dynamodb
+          direction: "outgoing"
+          label: "Read/Write"
+          
+    - id: backend_service3
+      name: "Backend Service 3"
+      type: "aws.compute.ECS"
+      relates:
+        - to: dynamodb
+          direction: "outgoing"
+          label: "Read/Write"
+          
+    # Database Layer
+    - id: dynamodb
+      name: "DynamoDB"
+      type: "aws.database.Dynamodb"
+      relates:
+        - to: kms
+          direction: "outgoing"
+          label: "Encryption"
+          
+    - id: dax
+      name: "DynamoDB Accelerator (DAX)"
+      type: "aws.database.DAX"
+      relates:
+        - to: dynamodb
+          direction: "outgoing"
+          label: "Cache"
+          
+    # Private Connectivity
+    - id: privatelink
+      name: "AWS PrivateLink"
+      type: "aws.network.Privatelink"
+      relates:
+        - to: nlb
+          direction: "outgoing"
+          label: "Private Access"
+          
+    - id: nlb
+      name: "Network Load Balancer"
+      type: "aws.network.ElbNetworkLoadBalancer"
+      relates:
+        - to: nodejs_app
+          direction: "outgoing"
+          label: "Private Traffic"
+          
+    # Security Services
+    - id: kms
+      name: "AWS KMS"
+      type: "aws.security.KeyManagementService"
+      
+    - id: secrets_manager
+      name: "Secrets Manager"
+      type: "aws.security.SecretsManager"
+      
+    - id: certificate_manager
+      name: "Certificate Manager"
+      type: "aws.security.CertificateManager"
+      relates:
+        - to: alb
+          direction: "outgoing"
+          label: "SSL/TLS Certificates"
+          
+    # Monitoring and Observability
+    - id: cloudwatch
+      name: "CloudWatch"
+      type: "aws.management.CloudWatch"
+      
+    - id: xray
+      name: "X-Ray"
+      type: "aws.devtools.XRay"
+      
+    - id: cloudtrail
+      name: "CloudTrail"
+      type: "aws.management.CloudTrail"
+      
+    # Container Registry
+    - id: ecr
+      name: "Elastic Container Registry"
+      type: "aws.compute.ECR"
+      relates:
+        - to: nodejs_app
+          direction: "outgoing"
+          label: "Container Images"
+        - to: backend_service1
+          direction: "outgoing"
+          label: "Container Images"
+        - to: backend_service2
+          direction: "outgoing"
+          label: "Container Images"
+        - to: backend_service3
+          direction: "outgoing"
+          label: "Container Images"
+          
+    # Main Traffic Flow Relationships
+    - id: internet
+      relates:
+        - to: cloudfront
+          direction: "outgoing"
+          label: "User Requests"
+          
+    - id: aws_customers
+      relates:
+        - to: privatelink
+          direction: "outgoing"
+          label: "Private Connection" 

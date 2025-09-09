@@ -1,0 +1,171 @@
+# Generated agent configuration (YAML v2)
+# Edit provider.class or its kwargs to switch model providers.
+
+name: arch_design-agent
+system_prompt: |
+  You are an AWS Architecture Design Specialist Agent with a sophisticated workflow for creating tailored architecture designs. Your primary workflow is:
+  
+  ## Phase 1: Requirements Analysis & Component Identification
+  - Use **analyze_and_question** tool to analyze initial requirements
+  - Query AWS documentation via MCP server to identify relevant AWS services
+  - Understand the business context, technical constraints, and objectives
+  
+  ## Phase 2: AWS Component Analysis & Questioning
+  - For each identified AWS service, query detailed capabilities from AWS documentation
+  - Generate specific application-centric questions (frameworks, scaling, dependencies)
+  - Generate infrastructure-centric questions (networking, security, compliance)
+  - Ask AWS service-specific configuration questions based on documentation
+  
+  ## Phase 3: Final Architecture Design
+  - Use **finalize_architecture** tool with detailed user answers
+  - Create comprehensive AWS architecture following Well-Architected Framework:
+    - **Security**: Multi-layer security, encryption, IAM best practices
+    - **Reliability**: Multi-AZ, auto-scaling, disaster recovery
+    - **Performance**: Right-sizing, caching, monitoring
+    - **Cost Optimization**: Reserved instances, auto-scaling, lifecycle policies
+    - **Operational Excellence**: IaC, CI/CD, monitoring
+    - **Sustainability**: Efficient resource usage
+  
+  ## Core Capabilities:
+  1. **AWS Documentation Integration**: Always query AWS MCP server for current service information
+  2. **Progressive Refinement**: Start broad, then drill down to specific configurations
+  3. **Application & Infrastructure Focus**: Ask questions about both app architecture and infrastructure needs
+  4. **Implementation-Ready Designs**: Provide specific configurations, not just high-level concepts
+  5. **Diagram Generation**: Convert architectures to visual diagrams using diagrams-as-code YAML format
+  
+  ## Diagrams-as-Code Reference:
+  You have access to comprehensive diagrams-as-code examples in `diagrams_as_code_reference.py` including:
+  - **Complete YAML examples**: web services, event processing, workers, and styled diagrams
+  - **AWS Service Type mappings**: All AWS services mapped to diagrams-as-code types
+  - **Architecture patterns**: Common patterns like web applications, microservices, event-driven
+  - **YAML structure guidelines**: Proper syntax for clusters, groups, and relationships
+  
+  **Use these references when converting architectures to YAML format**
+  
+  ## Available Tools:
+  - **analyze_and_question**: Start here - identifies AWS components and generates targeted questions
+  - **finalize_architecture**: Creates final design with user's detailed answers
+  - **design_aws_architecture**: Legacy tool for direct architecture design (use sparingly)
+  - **review_requirements**: Helper tool for component-specific questioning
+  - **clarify_requirements**: Helper tool for consolidating answers
+  - **convert_architecture_to_yaml**: Converts architecture design to diagrams-as-code YAML format
+  - **extract_data_flows**: Extracts data flows from architecture design for YAML conversion
+  - **generate_diagram_from_yaml**: Creates visual AWS diagrams from YAML specifications
+  - **validate_yaml_schema**: Validates YAML against diagrams-as-code schema
+  - **install_diagram_dependencies**: Installs required dependencies for diagram generation
+  
+  ## Extended Workflow:
+  1. **analyze_and_question** → get user answers → **finalize_architecture**
+  2. **convert_architecture_to_yaml** → **generate_diagram_from_yaml** (for visual diagrams)
+  3. Use **validate_yaml_schema** to ensure YAML correctness before diagram generation
+
+# -----------------------------------------------------------------------------
+# Provider configuration
+# -----------------------------------------------------------------------------
+# The CLI will import the model class specified in `provider.class` and use the
+# keyword-arguments under `provider.kwargs` verbatim.  Any key ending with
+# *_env is treated as an environment-variable placeholder and resolved at
+# runtime so secrets never live in source control.
+#
+# IMPORTANT: Only ONE provider should be active at a time!
+# To switch providers:
+#   1. Comment out the current `provider.class` and `provider.kwargs` lines
+#   2. Uncomment the desired provider section below
+#   3. Adjust the contents of `provider.kwargs` for that class
+#   4. Restart `agent dev` (or rebuild the container)
+#
+# A few ready-to-copy snippets are included below.
+# -----------------------------------------------------------------------------
+
+provider:
+  # --- Amazon Bedrock ---------------------------------------------------------
+  class: "strands.models.BedrockModel"
+  kwargs:
+    model_id: "us.anthropic.claude-3-7-sonnet-20250219-v1:0"          # e.g. us.amazon.claude-3-sonnet-v1:0
+    region_name: "us-west-2"          # aws region
+    temperature: 0.3
+    top_p: 0.9
+    max_tokens: 4096
+    timeout: 120  # Add timeout configuration
+
+  # --- Anthropic --------------------------------------------------------------
+  # class: "strands.models.anthropic.AnthropicModel"
+  # kwargs:
+  #   model_id: "claude-3-sonnet-20240229"
+  #   max_tokens: 1024
+  #   client_args:
+  #     api_key_env: ANTHROPIC_API_KEY        # pulled from env
+  #   params:
+  #     temperature: 0.7
+
+
+  # --- OpenAI -----------------------------------------------------------------
+  # class: "strands.models.openai.OpenAIModel"
+  # kwargs:
+  #   model: "gpt-4o-mini"
+  #   api_key_env: OPENAI_API_KEY
+  #   params:
+  #     temperature: 0.8
+  #     max_tokens: 1024
+
+  # --- LiteLLM (proxy) --------------------------------------------------------
+  # class: "strands.models.litellm.LiteLLMModel"
+  # kwargs:
+  #   model_id: "anthropic/claude-3-sonnet-20240229"
+  #   client_args:
+  #     api_key_env: LITELLM_API_KEY
+  #   params:
+  #     temperature: 0.7
+  #     max_tokens: 1000
+
+# Please refer to Strands Documentation for more details on providers. 
+
+# -----------------------------------------------------------------------------
+# MCP (Model Context Protocol) Servers
+# -----------------------------------------------------------------------------
+# Configure external MCP servers to extend your agent's capabilities
+# Transport types: stdio, sse, streamable_http, http
+# 
+# Environment variables:
+# - Any key ending with '_env' will be resolved from environment variables
+# - The '_env' suffix is removed from the final key name
+#
+
+
+mcp_servers:
+  # Example 1: Local stdio server (most common)
+  - name: aws_documentation
+    transport: stdio
+    command: ["uvx", "awslabs.aws-documentation-mcp-server@latest"]
+    env:
+      # Environment variable resolved at runtime
+      FASTMCP_LOG_LEVEL_env: MCP_LOG_LEVEL  # Reads from MCP_LOG_LEVEL env var
+      AWS_DOCUMENTATION_PARTITION: "aws"
+
+  # Simple test server
+  # - name: simple_test_server
+  #   transport: streamable_http
+  #   url: "http://localhost:8002/mcp"
+  #   headers:
+  #     User-Agent: "TestAgent/1.0"
+
+  # Bearer test server
+  # - name: bearer_test_server
+  #   transport: streamable_http
+  #   url: "http://localhost:8001/mcp-bearer"
+  #   auth:
+  #     type: bearer
+  #     token_env: TEST_BEARER_TOKEN
+  #   headers:
+  #     User-Agent: "TestAgent/1.0"
+
+  # API Key test server 
+  # - name: apikey_test_server
+  #   transport: streamable_http
+  #   url: "http://localhost:8001/mcp-apikey"
+  #   auth:
+  #     type: api_key
+  #     key_env: TEST_API_KEY
+  #     header: "X-API-Key"
+  #   headers:
+  #     User-Agent: "TestAgent/1.0"

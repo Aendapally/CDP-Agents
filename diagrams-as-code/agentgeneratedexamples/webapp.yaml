@@ -1,0 +1,87 @@
+diagram:
+  name: Node.js Application Architecture on AWS
+  open: true
+  resources:
+    - id: internet-gateway
+      name: Internet Gateway
+      type: aws.network.InternetGateway
+      relates:
+        - to: public-alb
+          direction: outgoing
+    
+    - id: public-alb
+      name: Public Application Load Balancer
+      type: aws.network.ELB
+      relates:
+        - to: web-tier
+          direction: outgoing
+    
+    - id: vpc-endpoint-service
+      name: AWS PrivateLink Endpoint Service
+      type: aws.network.Endpoint
+      relates:
+        - to: internal-nlb
+          direction: incoming
+    
+    - id: internal-nlb
+      name: Internal Network Load Balancer
+      type: aws.network.ELB
+      relates:
+        - to: web-tier
+          direction: outgoing
+    
+    - id: web-tier
+      name: Web Tier
+      type: cluster
+      of:
+        - id: web-asg
+          name: Web Tier Auto Scaling Group
+          type: group
+          of:
+            - id: web-instance-1
+              name: Web Instance 1
+              type: aws.compute.EC2
+            - id: web-instance-2
+              name: Web Instance 2
+              type: aws.compute.EC2
+          relates:
+            - to: microservices
+              direction: outgoing
+    
+    - id: microservices
+      name: Backend Microservices
+      type: cluster
+      of:
+        - id: microservice-1
+          name: Microservice 1
+          type: aws.compute.ECS
+          relates:
+            - to: database
+              direction: outgoing
+        - id: microservice-2
+          name: Microservice 2
+          type: aws.compute.ECS
+          relates:
+            - to: database
+              direction: outgoing
+        - id: microservice-3
+          name: Microservice 3
+          type: aws.compute.ECS
+          relates:
+            - to: database
+              direction: outgoing
+    
+    - id: database
+      name: Database
+      type: aws.database.RDS
+    
+    - id: customer-vpc
+      name: AWS Customer VPC
+      type: aws.network.VPC
+      of:
+        - id: customer-vpc-endpoint
+          name: VPC Interface Endpoint
+          type: aws.network.VPCEndpoint
+          relates:
+            - to: vpc-endpoint-service
+              direction: outgoing

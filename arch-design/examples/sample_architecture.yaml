@@ -1,0 +1,91 @@
+diagram:
+  name: Sample Node.js Web Application Architecture
+  direction: left-to-right
+  format: png
+  open: true
+  resources:
+    - id: route53
+      name: Route 53 DNS
+      type: aws.network.Route53
+      relates:
+        - to: cloudfront
+          direction: outgoing
+    - id: cloudfront
+      name: CloudFront CDN
+      type: aws.network.CloudFront
+      relates:
+        - to: waf
+          direction: outgoing
+    - id: waf
+      name: Web Application Firewall
+      type: aws.security.WAF
+      relates:
+        - to: alb
+          direction: outgoing
+    - id: alb
+      name: Application Load Balancer
+      type: aws.network.ElbApplicationLoadBalancer
+      relates:
+        - to: compute-layer.ecs-service
+          direction: outgoing
+    - id: compute-layer
+      name: Compute Layer
+      type: cluster
+      of:
+        - id: ecs-service
+          name: Node.js Application
+          type: group
+          of:
+            - id: ecs-task-1
+              name: ECS Task 1
+              type: aws.compute.ECS
+            - id: ecs-task-2
+              name: ECS Task 2
+              type: aws.compute.ECS
+            - id: ecs-task-3
+              name: ECS Task 3
+              type: aws.compute.ECS
+          relates:
+            - to: auth.cognito
+              direction: outgoing
+            - to: database-layer.rds-primary
+              direction: outgoing
+            - to: caching-layer.elasticache
+              direction: outgoing
+    - id: auth
+      name: Authentication
+      type: cluster
+      of:
+        - id: cognito
+          name: Amazon Cognito
+          type: aws.security.Cognito
+    - id: database-layer
+      name: Database Layer
+      type: cluster
+      of:
+        - id: rds-primary
+          name: RDS Primary
+          type: aws.database.RDS
+          relates:
+            - to: database-layer.rds-replica
+              direction: outgoing
+        - id: rds-replica
+          name: RDS Read Replica
+          type: aws.database.RDS
+    - id: caching-layer
+      name: Caching Layer
+      type: cluster
+      of:
+        - id: elasticache
+          name: ElastiCache Redis
+          type: aws.database.ElastiCache
+    - id: monitoring
+      name: Monitoring & Observability
+      type: cluster
+      of:
+        - id: cloudwatch
+          name: CloudWatch
+          type: aws.management.Cloudwatch
+        - id: xray
+          name: X-Ray Tracing
+          type: aws.devtools.XRay 

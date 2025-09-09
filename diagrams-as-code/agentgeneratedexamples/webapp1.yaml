@@ -1,0 +1,208 @@
+diagram:
+  name: Secure Node.js Web Application Architecture on AWS
+  open: true
+  resources:
+    - id: internet-gateway
+      name: Internet Gateway
+      type: aws.network.InternetGateway
+      relates:
+        - to: public-subnets
+          direction: outgoing
+
+    - id: vpc-endpoint
+      name: VPC Endpoint
+      type: aws.network.Endpoint
+      relates:
+        - to: application-load-balancer
+          direction: outgoing
+
+    - id: public-subnets
+      name: Public Subnets
+      type: group
+      of:
+        - id: public-subnet-1a
+          name: Public Subnet 1A
+          type: aws.network.PublicSubnet
+        - id: public-subnet-1b
+          name: Public Subnet 1B
+          type: aws.network.PublicSubnet
+      relates:
+        - to: application-load-balancer
+          direction: outgoing
+
+    - id: private-subnets
+      name: Private Subnets
+      type: group
+      of:
+        - id: private-subnet-1a
+          name: Private Subnet 1A
+          type: aws.network.PrivateSubnet
+        - id: private-subnet-1b
+          name: Private Subnet 1B
+          type: aws.network.PrivateSubnet
+      relates:
+        - to: web-application-cluster
+          direction: outgoing
+
+    - id: database-subnets
+      name: Database Subnets
+      type: group
+      of:
+        - id: db-subnet-1a
+          name: DB Subnet 1A
+          type: aws.network.PrivateSubnet
+        - id: db-subnet-1b
+          name: DB Subnet 1B
+          type: aws.network.PrivateSubnet
+      relates:
+        - to: database-cluster
+          direction: outgoing
+
+    - id: route53
+      name: Route 53 DNS
+      type: aws.network.Route53
+      relates:
+        - to: cloudfront
+          direction: outgoing
+
+    - id: cloudfront
+      name: CloudFront CDN
+      type: aws.network.CloudFront
+      relates:
+        - to: application-load-balancer
+          direction: outgoing
+
+    - id: waf
+      name: AWS WAF
+      type: aws.security.WAF
+      relates:
+        - to: application-load-balancer
+          direction: outgoing
+
+    - id: application-load-balancer
+      name: Application Load Balancer
+      type: aws.network.ALB
+      relates:
+        - to: web-application-cluster
+          direction: outgoing
+
+    - id: certificate-manager
+      name: ACM SSL Certificate
+      type: aws.security.CertificateManager
+      relates:
+        - to: application-load-balancer
+          direction: outgoing
+
+    - id: web-application-cluster
+      name: Node.js Web Application
+      type: cluster
+      of:
+        - id: ecs-service
+          name: ECS Service
+          type: group
+          of:
+            - id: nodejs-app-1
+              name: Node.js App Task 1
+              type: aws.compute.Fargate
+            - id: nodejs-app-2
+              name: Node.js App Task 2
+              type: aws.compute.Fargate
+            - id: nodejs-app-3
+              name: Node.js App Task 3
+              type: aws.compute.Fargate
+      relates:
+        - to: backend-services
+          direction: outgoing
+        - to: elasticache
+          direction: outgoing
+
+    - id: backend-services
+      name: Backend Services
+      type: cluster
+      of:
+        - id: backend-ecs-service
+          name: Backend ECS Service
+          type: group
+          of:
+            - id: backend-service-1
+              name: Backend Service 1
+              type: aws.compute.Fargate
+            - id: backend-service-2
+              name: Backend Service 2
+              type: aws.compute.Fargate
+      relates:
+        - to: database-cluster
+          direction: outgoing
+        - to: elasticache
+          direction: outgoing
+
+    - id: cognito
+      name: Amazon Cognito
+      type: aws.security.Cognito
+      relates:
+        - to: web-application-cluster
+          direction: outgoing
+
+    - id: elasticache
+      name: ElastiCache Redis
+      type: aws.database.ElastiCache
+      relates:
+        - to: database-cluster
+          direction: outgoing
+
+    - id: database-cluster
+      name: Database Cluster
+      type: cluster
+      of:
+        - id: rds-primary
+          name: RDS Primary
+          type: aws.database.RDS
+          relates:
+            - to: rds-read-replicas
+              direction: outgoing
+        - id: rds-read-replicas
+          name: RDS Read Replicas
+          type: group
+          of:
+            - id: rds-replica-1
+              name: RDS Read Replica 1
+              type: aws.database.RDS
+            - id: rds-replica-2
+              name: RDS Read Replica 2
+              type: aws.database.RDS
+
+    - id: nat-gateway
+      name: NAT Gateway
+      type: aws.network.NATGateway
+      relates:
+        - to: private-subnets
+          direction: outgoing
+
+    - id: secrets-manager
+      name: AWS Secrets Manager
+      type: aws.security.SecretsManager
+      relates:
+        - to: web-application-cluster
+          direction: outgoing
+        - to: database-cluster
+          direction: outgoing
+
+    - id: Cloudwatch
+      name: Cloudwatch Monitoring
+      type: aws.management.Cloudwatch
+      relates:
+        - to: web-application-cluster
+          direction: outgoing
+        - to: backend-services
+          direction: outgoing
+        - to: database-cluster
+          direction: outgoing
+
+    - id: ecr
+      name: Elastic Container Registry
+      type: aws.compute.ECR
+      relates:
+        - to: web-application-cluster
+          direction: outgoing
+        - to: backend-services
+          direction: outgoing

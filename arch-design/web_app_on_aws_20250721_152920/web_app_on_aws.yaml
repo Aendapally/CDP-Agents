@@ -1,0 +1,243 @@
+diagram:
+  name: Web App on AWS
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: '0.6'
+      ranksep: '1.2'
+    node:
+      shape: box
+      style: rounded,filled
+      fillcolor: lightblue
+    edge:
+      style: solid
+      color: darkblue
+      fontsize: '10'
+  resources:
+  - id: application_load_balancer
+    name: Application Load Balancer
+    type: aws.network.ElbApplicationLoadBalancer
+    description: Load Balancing
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: api_gateway
+    name: API Gateway
+    type: aws.network.APIGateway
+    description: API Management
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: privatelink
+    name: PrivateLink
+    type: aws.network.Privatelink
+    description: Private Connectivity
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_waf
+    name: AWS WAF
+    type: aws.security.WAF
+    description: Web Application Firewall
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: amazon_cognito
+    name: Amazon Cognito
+    type: aws.security.Cognito
+    description: User Authentication
+  - id: secrets_manager
+    name: Secrets Manager
+    type: aws.security.SecretsManager
+    description: Secrets Management
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: fargate
+    name: Fargate
+    type: aws.compute.Fargate
+    description: Serverless Containers
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: eks
+    name: EKS
+    type: aws.compute.EKS
+    description: Managed Kubernetes
+    relates:
+    - to: appsync
+      direction: outgoing
+      label: Message Processing
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: dynamodb
+    name: DynamoDB
+    type: aws.database.Dynamodb
+    description: NoSQL Database
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: aws_backup
+    name: AWS Backup
+    type: aws.storage.Backup
+    description: Backup Service
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: ecr
+    name: ECR
+    type: aws.compute.ECR
+    description: Container Registry
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: appsync
+    name: AppSync
+    type: aws.integration.Appsync
+    description: GraphQL API
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: users
+    name: Users
+    type: aws.general.Users
+    description: End Users
+  - id: use_aws
+    name: use aws
+    type: aws.general.General
+    description: 'Custom or inferred service: use aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: consider_aws
+    name: consider aws
+    type: aws.general.General
+    description: 'Custom or inferred service: consider aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: implement_aws
+    name: implement aws
+    type: aws.general.General
+    description: 'Custom or inferred service: implement aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: for_database
+    name: for database
+    type: aws.database.RDS
+    description: 'Custom or inferred service: for database'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: 'management
+
+
+      aws'
+    name: 'management
+
+
+      aws'
+    type: aws.general.General
+    description: 'Custom or inferred service: management
+
+
+      aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: enable_aws
+    name: enable aws
+    type: aws.general.General
+    description: 'Custom or inferred service: enable aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: on_aws
+    name: on aws
+    type: aws.general.General
+    description: 'Custom or inferred service: on aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: over_aws
+    name: over aws
+    type: aws.general.General
+    description: 'Custom or inferred service: over aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: integrate_aws
+    name: integrate aws
+    type: aws.general.General
+    description: 'Custom or inferred service: integrate aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: and_service
+    name: and service
+    type: aws.general.General
+    description: 'Custom or inferred service: and service'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: leverage_aws
+    name: leverage aws
+    type: aws.general.General
+    description: 'Custom or inferred service: leverage aws'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: cloudtrail
+    name: CloudTrail
+    type: aws.general.General
+    description: 'Custom or inferred service: CloudTrail'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: codepipeline
+    name: CodePipeline
+    type: aws.general.General
+    description: 'Custom or inferred service: CodePipeline'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
+  - id: cloudwatch
+    name: CloudWatch
+    type: aws.management.Cloudwatch
+    description: 'Custom or inferred service: CloudWatch'
+  - id: waf
+    name: WAF
+    type: aws.security.IAM
+    description: 'Custom or inferred service: WAF'
+    relates:
+    - to: cloudwatch
+      direction: outgoing
+      label: Monitoring
