@@ -4,50 +4,65 @@ from strands import tool
 @tool
 def analyze_and_question(user_requirements: str) -> str:
     """
-    Orchestrates the architecture design workflow by first identifying AWS components, 
-    then generating application and infrastructure questions.
+    Orchestrates the requirements gathering phase by analyzing user requirements and generating
+    application and infrastructure questions WITHOUT querying AWS documentation.
     
-    This tool follows the complete workflow:
-    1. Analyzes user requirements to identify relevant AWS components
-    2. Queries AWS documentation for component details
-    3. Generates specific application and infrastructure questions based on those components
-    4. Returns structured questions for detailed architecture design
+    This tool focuses on requirements gathering FIRST:
+    1. Analyzes user requirements to understand business and technical needs
+    2. Generates application-centric questions (what the app does, users, data, features)
+    3. Generates infrastructure-centric questions (scaling, availability, security, performance)
+    4. Does NOT query AWS documentation in this phase - that happens after requirements are complete
+    
+    IMPORTANT: Do NOT use AWS MCP tools (search_documentation, read_documentation) in this phase.
+    Focus purely on understanding the application and infrastructure requirements.
     
     Args:
         user_requirements: Initial natural language description of system requirements
     
     Returns:
         Structured analysis including:
-        - Identified AWS components with rationale
-        - Application-centric questions
-        - Infrastructure-centric questions
-        - AWS service-specific configuration questions
-        - Integration and operational questions
+        - Requirements analysis and understanding
+        - Application-centric questions (frameworks, features, users, data)
+        - Infrastructure-centric questions (scaling, availability, security, compliance)
+        - Performance and operational requirements questions
+        - NO AWS service recommendations at this stage
     """
     
     return f"""
-# AWS Architecture Analysis & Requirements Refinement
+# Requirements Analysis & Gathering
 
-I'll analyze your requirements, identify the most suitable AWS components using AWS documentation, 
-and then ask specific application and infrastructure questions to design a tailored architecture.
+I'll analyze your requirements and ask comprehensive questions to understand your application 
+and infrastructure needs. I will NOT query AWS documentation at this stage - that will happen 
+after we gather all requirements.
 
 **Your Requirements:**
 {user_requirements}
 
-## Step 1: AWS Component Identification
-I'll first identify the most relevant AWS services for your requirements by consulting AWS documentation.
+## Step 1: Requirements Understanding
+I'll analyze your requirements to understand:
+- Business objectives and use cases
+- Application functionality and features
+- User base and access patterns
+- Data types and volumes
+- Performance and availability needs
 
-## Step 2: Component Analysis
-For each identified component, I'll analyze its capabilities and configuration options.
+## Step 2: Application-Focused Questions
+I'll ask questions about:
+- Application architecture and technology stack
+- User experience and access patterns
+- Data handling and storage needs
+- Integration requirements
+- Feature-specific needs
 
-## Step 3: Detailed Questioning
-Based on the identified components, I'll ask specific questions about:
-- Application architecture and implementation details
-- Infrastructure configuration and requirements
-- AWS service-specific settings and integrations
-- Operational and maintenance considerations
+## Step 3: Infrastructure-Focused Questions
+I'll ask questions about:
+- Scaling and performance requirements
+- Availability and disaster recovery needs
+- Security and compliance requirements
+- Network and connectivity needs
+- Operational and monitoring requirements
 
-Let me begin the analysis...
+Let me begin the requirements analysis...
 """
 
 

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Global context manager to keep MCP connections alive
 _mcp_context = None
+_mcp_context_manager = None  # Store the original ExitStack
 
 def get_mcp_tools_sync(mcp_config: List[Dict[str, Any]]) -> List:
     """
@@ -27,7 +28,7 @@ def get_mcp_tools_sync(mcp_config: List[Dict[str, Any]]) -> List:
     Returns:
         List of Strands-compatible tools from MCP servers
     """
-    global _mcp_context
+    global _mcp_context, _mcp_context_manager
     
     if not mcp_config:
         return []
@@ -38,9 +39,15 @@ def get_mcp_tools_sync(mcp_config: List[Dict[str, Any]]) -> List:
         tools, context_manager = get_mcp_tools_with_context(mcp_config)
         
         if context_manager:
-            # Keep the context alive globally
-            _mcp_context = context_manager
-            logger.info(f"✅ Loaded {len(tools)} MCP tools")
+            # CRITICAL: Enter the context to keep connections alive
+            # This establishes the MCP connections and keeps them open
+            _mcp_context_manager = context_manager
+            _mcp_context = context_manager.__enter__()
+            logger.info(f"✅ Loaded {len(tools)} MCP tools and established connections")
+        else:
+            logger.warning("No context manager returned from get_mcp_tools_with_context")
+            if not tools:
+                logger.warning("No MCP tools loaded. Check your MCP server configuration.")
         
         return tools
         
@@ -49,17 +56,22 @@ def get_mcp_tools_sync(mcp_config: List[Dict[str, Any]]) -> List:
         return []
     except Exception as e:
         logger.warning(f"Failed to load MCP tools: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
         return []
 
 def cleanup_mcp():
     """Cleanup MCP connections."""
-    global _mcp_context
-    if _mcp_context:
+    global _mcp_context, _mcp_context_manager
+    if _mcp_context_manager:
         try:
-            _mcp_context.close()
+            # Properly exit the context manager to close connections
+            _mcp_context_manager.__exit__(None, None, None)
+            logger.info("MCP connections closed")
         except Exception as e:
             logger.warning(f"Error cleaning up MCP: {e}")
         _mcp_context = None
+        _mcp_context_manager = None
 
 # Register cleanup on process exit
 import atexit

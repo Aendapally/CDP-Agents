@@ -19,6 +19,10 @@ from contextlib import ExitStack
 logger = logging.getLogger(__name__)
 
 # Strands built-in MCP support
+MCP_AVAILABLE = False
+STREAMABLE_HTTP_AVAILABLE = False
+MCPClient = None  # Initialize to None so it's always defined
+
 try:
     from mcp import stdio_client, StdioServerParameters
     from mcp.client.sse import sse_client
@@ -33,12 +37,13 @@ try:
         STREAMABLE_HTTP_AVAILABLE = False
         logger.info("Streamable HTTP transport not available. Update mcp package for latest features.")
         
-except ImportError:
+except ImportError as e:
     MCP_AVAILABLE = False
     STREAMABLE_HTTP_AVAILABLE = False
-    logger.info("MCP not available. Install with: pip install mcp")
+    MCPClient = None
+    logger.info(f"MCP not available. Install with: pip install mcp. Error: {e}")
 
-def create_mcp_clients(mcp_config: List[Dict[str, Any]]) -> List[MCPClient]:
+def create_mcp_clients(mcp_config: List[Dict[str, Any]]) -> List[Any]:
     """Create MCP clients from configuration."""
     if not MCP_AVAILABLE or not mcp_config:
         return []
@@ -56,7 +61,7 @@ def create_mcp_clients(mcp_config: List[Dict[str, Any]]) -> List[MCPClient]:
     
     return clients
 
-def _create_single_client(config: Dict[str, Any]) -> MCPClient:
+def _create_single_client(config: Dict[str, Any]) -> Any:
     """Create a single MCP client from config."""
     name = config.get('name', 'unnamed')
     transport_type = config.get('transport', 'stdio')  # Default to stdio
@@ -74,8 +79,11 @@ def _create_single_client(config: Dict[str, Any]) -> MCPClient:
         logger.warning(f"Unsupported transport type '{transport_type}' for {name}. Available: {', '.join(available_transports)}")
         return None
 
-def _create_stdio_client(config: Dict[str, Any]) -> MCPClient:
+def _create_stdio_client(config: Dict[str, Any]) -> Any:
     """Create stdio MCP client."""
+    if not MCP_AVAILABLE or MCPClient is None:
+        raise RuntimeError("MCP is not available. Install with: pip install mcp")
+    
     command = config.get('command', [])
     env = config.get('env', {})
     
@@ -103,8 +111,11 @@ def _create_stdio_client(config: Dict[str, Any]) -> MCPClient:
         )
     ))
 
-def _create_sse_client(config: Dict[str, Any]) -> MCPClient:
+def _create_sse_client(config: Dict[str, Any]) -> Any:
     """Create SSE MCP client."""
+    if not MCP_AVAILABLE or MCPClient is None:
+        raise RuntimeError("MCP is not available. Install with: pip install mcp")
+    
     url = config.get('url')
     if not url:
         raise ValueError(f"No URL specified for SSE server {config.get('name')}")
@@ -119,8 +130,11 @@ def _create_sse_client(config: Dict[str, Any]) -> MCPClient:
     
     return MCPClient(lambda: sse_client(url))
 
-def _create_streamable_http_client(config: Dict[str, Any]) -> MCPClient:
+def _create_streamable_http_client(config: Dict[str, Any]) -> Any:
     """Create Streamable HTTP MCP client."""
+    if not MCP_AVAILABLE or MCPClient is None:
+        raise RuntimeError("MCP is not available. Install with: pip install mcp")
+    
     if not STREAMABLE_HTTP_AVAILABLE:
         raise ValueError("Streamable HTTP transport not available. Please update your mcp package.")
     
