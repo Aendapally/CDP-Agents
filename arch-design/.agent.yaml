@@ -63,6 +63,8 @@ system_prompt: |
   - **generate_diagram_from_yaml**: Creates visual AWS diagrams from YAML specifications
   - **validate_yaml_schema**: Validates YAML against diagrams-as-code schema
   - **install_diagram_dependencies**: Installs required dependencies for diagram generation
+  - **read_tfstate**: Reads a Terraform state file (local path or S3 URI) and returns a resource summary
+  - **tfstate_to_diagram**: Reads a Terraform state file and generates an architecture diagram (YAML + PNG)
   
   ## Extended Workflow:
   1. **Phase 1**: **analyze_and_question** → ask requirements questions → gather user answers (NO AWS MCP queries)

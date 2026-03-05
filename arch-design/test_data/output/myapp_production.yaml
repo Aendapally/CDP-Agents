@@ -1,0 +1,246 @@
+diagram:
+  name: MyApp Production
+  direction: top-to-bottom
+  format: png
+  open: true
+  resources:
+  - id: vpc_main
+    name: production-vpc
+    type: aws.network.VPC
+  - id: internet_gateway_mainclear
+  
+    name: main-igw
+    type: aws.network.InternetGateway
+  - id: nat_gateway_main
+    name: main-nat-gateway
+    type: aws.network.NATGateway
+  - id: route53_zone_primary
+    name: myapp-hosted-zone
+    type: aws.network.Route53
+    relates:
+    - to: cloudfront_distribution_main
+      direction: outgoing
+      label: DNS
+  - id: cloudfront_distribution_main
+    name: myapp-cdn
+    type: aws.network.CloudFront
+    relates:
+    - to: lb_main
+      direction: outgoing
+      label: Origin
+    - to: s3_bucket_static_assets
+      direction: outgoing
+      label: Static Assets
+    - to: s3_bucket_uploads
+      direction: outgoing
+      label: Static Assets
+  - id: wafweb_acl_main
+    name: myapp-waf
+    type: aws.security.WAF
+    relates:
+    - to: lb_main
+      direction: outgoing
+      label: Protects
+  - id: lb_main
+    name: myapp-alb
+    type: aws.network.ElbApplicationLoadBalancer
+    relates:
+    - to: ecs_service_web
+      direction: outgoing
+      label: Routes To
+    - to: ecs_service_api
+      direction: outgoing
+      label: Routes To
+  - id: ecs_cluster_main
+    name: myapp-ecs-cluster
+    type: aws.compute.ECS
+    relates:
+    - to: ecs_service_web
+      direction: outgoing
+      label: Runs
+    - to: ecs_service_api
+      direction: outgoing
+      label: Runs
+  - id: ecs_service_web
+    name: web-service
+    type: aws.compute.ECS
+    relates:
+    - to: db_instance_main
+      direction: outgoing
+      label: Reads/Writes
+    - to: dynamodb_table_sessions
+      direction: outgoing
+      label: Reads/Writes
+    - to: elasticache_replication_group_main
+      direction: outgoing
+      label: Cache
+  - id: ecs_service_api
+    name: api-service
+    type: aws.compute.ECS
+    relates:
+    - to: db_instance_main
+      direction: outgoing
+      label: Reads/Writes
+    - to: dynamodb_table_sessions
+      direction: outgoing
+      label: Reads/Writes
+    - to: elasticache_replication_group_main
+      direction: outgoing
+      label: Cache
+  - id: ecr_repository_web
+    name: myapp-web-ecr
+    type: aws.compute.ECR
+  - id: lambda_function_image_processor
+    name: image-processor
+    type: aws.compute.Lambda
+    relates:
+    - to: s3_bucket_static_assets
+      direction: outgoing
+      label: Reads/Writes
+    - to: s3_bucket_uploads
+      direction: outgoing
+      label: Reads/Writes
+  - id: lambda_function_notification_sender
+    name: notification-sender
+    type: aws.compute.Lambda
+    relates:
+    - to: s3_bucket_static_assets
+      direction: outgoing
+      label: Reads/Writes
+    - to: s3_bucket_uploads
+      direction: outgoing
+      label: Reads/Writes
+  - id: db_instance_main
+    name: myapp-postgres
+    type: aws.database.RDS
+  - id: dynamodb_table_sessions
+    name: myapp-sessions
+    type: aws.database.Dynamodb
+  - id: elasticache_replication_group_main
+    name: myapp-redis
+    type: aws.database.ElastiCache
+  - id: s3_bucket_static_assets
+    name: static-assets
+    type: aws.storage.S3
+  - id: s3_bucket_uploads
+    name: user-uploads
+    type: aws.storage.S3
+  - id: sqs_queue_image_processing
+    name: image-processing-queue
+    type: aws.integration.SQS
+    relates:
+    - to: lambda_function_image_processor
+      direction: outgoing
+      label: Triggers
+    - to: lambda_function_notification_sender
+      direction: outgoing
+      label: Triggers
+  - id: sns_topic_notifications
+    name: app-notifications
+    type: aws.integration.SNS
+    relates:
+    - to: sqs_queue_image_processing
+      direction: outgoing
+      label: Fanout
+    - to: lambda_function_image_processor
+      direction: outgoing
+      label: Notifies
+    - to: lambda_function_notification_sender
+      direction: outgoing
+      label: Notifies
+  - id: cognito_user_pool_main
+    name: myapp-user-pool
+    type: aws.security.Cognito
+    relates:
+    - to: lb_main
+      direction: outgoing
+      label: Authenticates
+  - id: acm_certificate_main
+    name: myapp-cert
+    type: aws.security.CertificateManager
+  - id: kms_key_main
+    name: myapp-kms-key
+    type: aws.security.KMS
+  - id: secretsmanager_secret_db_credentials
+    name: db-credentials
+    type: aws.security.SecretsManager
+  - id: cloudwatch_log_group_ecs_web
+    name: ecs-web-logs
+    type: aws.management.Cloudwatch
+  - id: cloudwatch_metric_alarm_cpu_high
+    name: cpu-high-alarm
+    type: aws.management.Cloudwatch
+  - id: cloudtrail_main
+    name: myapp-cloudtrail
+    type: aws.management.Cloudtrail
+  - id: codepipeline_main
+    name: myapp-pipeline
+    type: aws.devtools.Codepipeline
+    relates:
+    - to: codebuild_project_build
+      direction: outgoing
+      label: Builds
+    - to: ecs_service_web
+      direction: outgoing
+      label: Deploys
+  - id: codebuild_project_build
+    name: myapp-codebuild
+    type: aws.devtools.Codebuild
+    relates:
+    - to: ecr_repository_web
+      direction: outgoing
+      label: Pushes Image
+  clusters:
+  - id: network
+    name: Networking
+    resources:
+    - vpc_main
+    - internet_gateway_main
+    - nat_gateway_main
+    - route53_zone_primary
+    - cloudfront_distribution_main
+    - lb_main
+  - id: security
+    name: Security
+    resources:
+    - wafweb_acl_main
+    - cognito_user_pool_main
+    - acm_certificate_main
+    - kms_key_main
+    - secretsmanager_secret_db_credentials
+  - id: compute
+    name: Compute
+    resources:
+    - ecs_cluster_main
+    - ecs_service_web
+    - ecs_service_api
+    - ecr_repository_web
+    - lambda_function_image_processor
+    - lambda_function_notification_sender
+  - id: database
+    name: Databases
+    resources:
+    - db_instance_main
+    - dynamodb_table_sessions
+    - elasticache_replication_group_main
+  - id: storage
+    name: Storage
+    resources:
+    - s3_bucket_static_assets
+    - s3_bucket_uploads
+  - id: integration
+    name: Integration & Messaging
+    resources:
+    - sqs_queue_image_processing
+    - sns_topic_notifications
+  - id: monitoring
+    name: Management & Monitoring
+    resources:
+    - cloudwatch_log_group_ecs_web
+    - cloudwatch_metric_alarm_cpu_high
+    - cloudtrail_main
+  - id: devops
+    name: CI/CD & DevTools
+    resources:
+    - codepipeline_main
+    - codebuild_project_build
