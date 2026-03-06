@@ -1,0 +1,3 @@
+diagram_name=Microservices Platform
+yaml_file=microservices_platform.yaml
+output_folder=arch-design/test_data/output_arch_llm

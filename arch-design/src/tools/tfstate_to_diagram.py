@@ -3,10 +3,13 @@ import json
 import yaml
 import re
 import os
+import logging
 import boto3
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Terraform resource type → diagrams-as-code type mapping
@@ -414,6 +417,142 @@ def _add_rel(rels: list, seen: set, src: str, tgt: str, label: str):
 
 
 # ---------------------------------------------------------------------------
+# LLM-enhanced relationship inference
+# ---------------------------------------------------------------------------
+
+def _load_bedrock_config() -> dict:
+    """Load Bedrock model config from .agent.yaml so we reuse the same model."""
+    defaults = {
+        "model_id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        "region_name": "us-west-2",
+    }
+    try:
+        cfg_path = Path(__file__).parent.parent.parent / ".agent.yaml"
+        if cfg_path.exists():
+            cfg = yaml.safe_load(cfg_path.read_text())
+            kwargs = cfg.get("provider", {}).get("kwargs", {})
+            return {
+                "model_id": kwargs.get("model_id", defaults["model_id"]),
+                "region_name": kwargs.get("region_name", defaults["region_name"]),
+            }
+    except Exception:
+        pass
+    return defaults
+
+
+def _call_bedrock(prompt: str, max_tokens: int = 4096) -> str:
+    """Make a direct boto3 call to Bedrock for structured inference."""
+    cfg = _load_bedrock_config()
+    client = boto3.client("bedrock-runtime", region_name=cfg["region_name"])
+
+    response = client.invoke_model(
+        modelId=cfg["model_id"],
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+        }),
+    )
+    result = json.loads(response["body"].read())
+    return result["content"][0]["text"]
+
+
+def _parse_json_from_llm(text: str):
+    """Extract a JSON array from LLM output, handling markdown fences."""
+    text = text.strip()
+    if "```" in text:
+        parts = text.split("```")
+        for part in parts:
+            cleaned = part.strip()
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+            if cleaned.startswith("["):
+                try:
+                    return json.loads(cleaned)
+                except json.JSONDecodeError:
+                    continue
+    if text.startswith("["):
+        return json.loads(text)
+    start = text.find("[")
+    end = text.rfind("]")
+    if start != -1 and end != -1:
+        return json.loads(text[start : end + 1])
+    raise ValueError("No JSON array found in LLM response")
+
+
+def _llm_enhance_relationships(
+    resources: List[Dict[str, Any]],
+    deterministic_rels: List[Tuple[str, str, str]],
+) -> List[Tuple[str, str, str]]:
+    """Ask the LLM to review and enhance the deterministic relationships.
+
+    The LLM receives the full resource list and the relationships already
+    inferred, and can add missing ones, remove incorrect ones, or improve
+    labels.  Returns the enhanced list, or the original if the call fails.
+    """
+    resource_desc = "\n".join(
+        f"  - id: {_resource_id(r)},  terraform_type: {r['tf_type']},  "
+        f"name: {r['resource_name']},  category: {r['category']}"
+        for r in resources
+    )
+    existing_desc = "\n".join(
+        f"  - {src} → {tgt}  label: \"{lbl}\"" for src, tgt, lbl in deterministic_rels
+    )
+
+    prompt = f"""You are a Senior AWS Solutions Architect reviewing an infrastructure architecture derived from a Terraform state file.
+
+## Resources (from Terraform state)
+{resource_desc}
+
+## Existing Relationships (auto-inferred)
+{existing_desc}
+
+## Task
+Review the resources and existing relationships. Return an **improved** set of relationships that:
+1. Keeps correct existing relationships (you may improve labels).
+2. Adds any missing relationships that are strongly implied by the resource types and names.
+3. Removes any relationships that don't make architectural sense.
+4. Does NOT create N×M connections — be selective and precise.
+5. Uses descriptive labels (e.g. "HTTPS", "Read/Write", "Triggers", "Publishes", "Cache Lookup", "DNS").
+6. Every from_id and to_id MUST be one of the resource ids listed above.
+
+## Output
+Return ONLY a JSON array — no markdown, no explanation. Each element:
+{{"from_id": "<source id>", "to_id": "<target id>", "label": "<short label>"}}
+
+JSON array:"""
+
+    try:
+        raw = _call_bedrock(prompt)
+        parsed = _parse_json_from_llm(raw)
+
+        valid_ids = {_resource_id(r) for r in resources}
+        enhanced: List[Tuple[str, str, str]] = []
+        seen: set = set()
+        for rel in parsed:
+            src = rel.get("from_id", "")
+            tgt = rel.get("to_id", "")
+            lbl = rel.get("label", "")
+            if src in valid_ids and tgt in valid_ids and src != tgt:
+                key = (src, tgt)
+                if key not in seen:
+                    seen.add(key)
+                    enhanced.append((src, tgt, lbl))
+
+        logger.info(
+            f"LLM enhanced relationships: {len(deterministic_rels)} deterministic → "
+            f"{len(enhanced)} LLM-derived"
+        )
+        return enhanced if enhanced else deterministic_rels
+    except Exception as e:
+        logger.warning(f"LLM enhancement failed, keeping deterministic relationships: {e}")
+        return deterministic_rels
+
+
+# ---------------------------------------------------------------------------
 # YAML generation
 # ---------------------------------------------------------------------------
 
@@ -564,6 +703,7 @@ def tfstate_to_diagram(
     output_folder: str = "",
     include_types: str = "",
     exclude_types: str = "",
+    enhance_with_llm: str = "false",
 ) -> str:
     """
     Read a Terraform state file and generate an architecture diagram (YAML + PNG).
@@ -571,6 +711,11 @@ def tfstate_to_diagram(
     Reads the tfstate from a local path or S3 URI, extracts all managed AWS
     resources, maps them to diagram types, infers relationships, and produces
     a diagrams-as-code YAML file and a PNG architecture diagram.
+
+    When enhance_with_llm is "true", the tool calls the LLM (via Bedrock) to
+    review and enhance the auto-inferred relationships — adding missing
+    connections, removing incorrect ones, and improving labels. This requires
+    AWS Bedrock credentials. Defaults to "false" to keep standalone capability.
 
     Args:
         source: Path to the tfstate file. Either a local path
@@ -580,6 +725,7 @@ def tfstate_to_diagram(
         output_folder: Folder to save outputs. Auto-generated if empty.
         include_types: Comma-separated Terraform types to include (empty = all).
         exclude_types: Comma-separated additional Terraform types to exclude.
+        enhance_with_llm: "true" to use LLM for relationship enhancement, "false" (default) for deterministic only.
 
     Returns:
         Status message with file paths and a summary of what was generated.
@@ -606,8 +752,14 @@ def tfstate_to_diagram(
     if not resources:
         return "❌ No diagrammable AWS resources found in the state file."
 
-    # Infer relationships
+    # Infer relationships (deterministic pass)
     relationships = _infer_relationships(resources)
+    relationship_method = "deterministic"
+
+    # Optional LLM enhancement pass
+    if enhance_with_llm.lower() == "true":
+        relationships = _llm_enhance_relationships(resources, relationships)
+        relationship_method = "LLM-enhanced"
 
     # Build YAML
     diagram_dict = _build_diagram_yaml(resources, relationships, diagram_name)
@@ -647,7 +799,7 @@ def tfstate_to_diagram(
 🖼️ **PNG Diagram**: {png_path}
 
 📊 **Resources**: {len(resources)} AWS services mapped ({cat_summary})
-🔗 **Relationships**: {len(relationships)} connections inferred
+🔗 **Relationships**: {len(relationships)} connections ({relationship_method})
 🗂️ **Terraform State Version**: {state.get('version')}  |  Serial: {state.get('serial')}
 
 {diagram_result}

@@ -1,0 +1,186 @@
+diagram:
+  name: data_pipeline
+  direction: top-to-bottom
+  format: png
+  open: true
+  resources:
+  - id: kinesis_stream_clickstream
+    name: clickstream-events
+    type: aws.analytics.KinesisDataStreams
+    relates:
+    - to: lambda_function_clickstream_enricher
+      direction: outgoing
+      label: Triggers
+    - to: kinesis_firehose_delivery_stream_clickstream_to_s3
+      direction: outgoing
+      label: Source
+  - id: kinesis_stream_transactions
+    name: transaction-events
+    type: aws.analytics.KinesisDataStreams
+    relates:
+    - to: lambda_function_fraud_detector
+      direction: outgoing
+      label: Triggers
+  - id: kinesis_firehose_delivery_stream_clickstream_to_s3
+    name: clickstream-firehose
+    type: aws.analytics.KinesisDataFirehose
+    relates:
+    - to: s3_bucket_raw_data
+      direction: outgoing
+      label: Delivers Data
+  - id: lambda_function_clickstream_enricher
+    name: clickstream-enricher
+    type: aws.compute.Lambda
+    relates:
+    - to: s3_bucket_processed_data
+      direction: outgoing
+      label: Writes Enriched Data
+    - to: cloudwatch_log_group_pipeline_logs
+      direction: outgoing
+      label: Logs
+  - id: lambda_function_fraud_detector
+    name: fraud-detector
+    type: aws.compute.Lambda
+    relates:
+    - to: dynamodb_table_fraud_alerts
+      direction: outgoing
+      label: Writes Alerts
+    - to: sns_topic_fraud_alerts
+      direction: outgoing
+      label: Publishes Alerts
+    - to: cloudwatch_log_group_pipeline_logs
+      direction: outgoing
+      label: Logs
+  - id: s3_bucket_raw_data
+    name: raw-data-lake
+    type: aws.storage.S3
+    relates:
+    - to: glue_job_etl_clickstream
+      direction: outgoing
+      label: Source Data
+    - to: glue_job_etl_transactions
+      direction: outgoing
+      label: Source Data
+  - id: s3_bucket_processed_data
+    name: processed-data-lake
+    type: aws.storage.S3
+    relates:
+    - to: athena_workgroup_analytics
+      direction: outgoing
+      label: Query Source
+    - to: redshift_cluster_warehouse
+      direction: outgoing
+      label: Data Source
+  - id: s3_bucket_athena_results
+    name: athena-results
+    type: aws.storage.S3
+  - id: glue_catalog_database_analytics
+    name: analytics-catalog
+    type: aws.analytics.Glue
+  - id: glue_job_etl_clickstream
+    name: etl-clickstream-job
+    type: aws.analytics.Glue
+    relates:
+    - to: s3_bucket_processed_data
+      direction: outgoing
+      label: Writes Processed Data
+    - to: glue_catalog_database_analytics
+      direction: outgoing
+      label: Updates Schema
+    - to: cloudwatch_log_group_pipeline_logs
+      direction: outgoing
+      label: Logs
+  - id: glue_job_etl_transactions
+    name: etl-transactions-job
+    type: aws.analytics.Glue
+    relates:
+    - to: s3_bucket_processed_data
+      direction: outgoing
+      label: Writes Processed Data
+    - to: glue_catalog_database_analytics
+      direction: outgoing
+      label: Updates Schema
+    - to: cloudwatch_log_group_pipeline_logs
+      direction: outgoing
+      label: Logs
+  - id: athena_workgroup_analytics
+    name: analytics-athena
+    type: aws.analytics.Athena
+    relates:
+    - to: s3_bucket_athena_results
+      direction: outgoing
+      label: Stores Results
+  - id: redshift_cluster_warehouse
+    name: analytics-warehouse
+    type: aws.database.Redshift
+  - id: dynamodb_table_fraud_alerts
+    name: fraud-alerts
+    type: aws.database.Dynamodb
+  - id: sns_topic_fraud_alerts
+    name: fraud-alerts-topic
+    type: aws.integration.SNS
+  - id: sqs_queue_etl_trigger
+    name: etl-trigger-queue
+    type: aws.integration.SQS
+    relates:
+    - to: sfn_state_machine_etl_pipeline
+      direction: outgoing
+      label: Triggers
+  - id: sfn_state_machine_etl_pipeline
+    name: etl-pipeline-orchestrator
+    type: aws.integration.StepFunctions
+    relates:
+    - to: glue_job_etl_clickstream
+      direction: outgoing
+      label: Orchestrates
+    - to: glue_job_etl_transactions
+      direction: outgoing
+      label: Orchestrates
+  - id: cloudwatch_log_group_pipeline_logs
+    name: pipeline-logs
+    type: aws.management.Cloudwatch
+  - id: cloudwatch_metric_alarm_stream_lag
+    name: stream-lag-alarm
+    type: aws.management.Cloudwatch
+    relates:
+    - to: sns_topic_fraud_alerts
+      direction: outgoing
+      label: Notifies
+  clusters:
+  - id: analytics
+    name: Analytics
+    resources:
+    - kinesis_stream_clickstream
+    - kinesis_stream_transactions
+    - kinesis_firehose_delivery_stream_clickstream_to_s3
+    - glue_catalog_database_analytics
+    - glue_job_etl_clickstream
+    - glue_job_etl_transactions
+    - athena_workgroup_analytics
+  - id: compute
+    name: Compute
+    resources:
+    - lambda_function_clickstream_enricher
+    - lambda_function_fraud_detector
+  - id: storage
+    name: Storage
+    resources:
+    - s3_bucket_raw_data
+    - s3_bucket_processed_data
+    - s3_bucket_athena_results
+  - id: database
+    name: Databases
+    resources:
+    - redshift_cluster_warehouse
+    - dynamodb_table_fraud_alerts
+  - id: integration
+    name: Integration & Messaging
+    resources:
+    - sns_topic_fraud_alerts
+    - sqs_queue_etl_trigger
+    - sfn_state_machine_etl_pipeline
+  - id: monitoring
+    name: Management & Monitoring
+    resources:
+    - cloudwatch_log_group_pipeline_logs
+    - cloudwatch_metric_alarm_stream_lag

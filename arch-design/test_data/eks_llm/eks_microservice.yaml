@@ -1,0 +1,255 @@
+diagram:
+  name: EKS Microservice
+  direction: top-to-bottom
+  format: png
+  open: true
+  resources:
+  - id: vpc_main
+    name: eks-production-vpc
+    type: aws.network.VPC
+    relates:
+    - to: eks_cluster_main
+      direction: outgoing
+      label: Hosts
+    - to: nat_gateway_az_a
+      direction: outgoing
+      label: Contains
+    - to: nat_gateway_az_b
+      direction: outgoing
+      label: Contains
+    - to: rds_cluster_users_db
+      direction: outgoing
+      label: Hosts
+    - to: elasticache_replication_group_sessions
+      direction: outgoing
+      label: Hosts
+  - id: nat_gateway_az_a
+    name: nat-gateway-a
+    type: aws.network.NATGateway
+  - id: nat_gateway_az_b
+    name: nat-gateway-b
+    type: aws.network.NATGateway
+  - id: route53_zone_main
+    name: platform-dns
+    type: aws.network.Route53
+    relates:
+    - to: lb_ingress
+      direction: outgoing
+      label: DNS Resolution
+  - id: acm_certificate_wildcard
+    name: wildcard-cert
+    type: aws.security.CertificateManager
+    relates:
+    - to: lb_ingress
+      direction: outgoing
+      label: TLS Termination
+  - id: lb_ingress
+    name: platform-ingress-alb
+    type: aws.network.ElbApplicationLoadBalancer
+    relates:
+    - to: eks_cluster_main
+      direction: outgoing
+      label: Routes Traffic
+  - id: lb_internal
+    name: platform-internal-nlb
+    type: aws.network.ElbNetworkLoadBalancer
+    relates:
+    - to: eks_cluster_main
+      direction: outgoing
+      label: Internal Traffic
+  - id: eks_cluster_main
+    name: platform-eks
+    type: aws.compute.EKS
+    relates:
+    - to: eks_node_group_general
+      direction: outgoing
+      label: Manages
+    - to: eks_node_group_gpu
+      direction: outgoing
+      label: Manages
+    - to: ecr_repository_user_service
+      direction: outgoing
+      label: Pulls Images
+    - to: ecr_repository_order_service
+      direction: outgoing
+      label: Pulls Images
+    - to: ecr_repository_ml_service
+      direction: outgoing
+      label: Pulls Images
+    - to: rds_cluster_users_db
+      direction: outgoing
+      label: Reads/Writes
+    - to: dynamodb_table_orders
+      direction: outgoing
+      label: Reads/Writes
+    - to: elasticache_replication_group_sessions
+      direction: outgoing
+      label: Caches Data
+    - to: s3_bucket_ml_models
+      direction: outgoing
+      label: Reads Models
+    - to: s3_bucket_app_assets
+      direction: outgoing
+      label: Reads Assets
+    - to: sqs_queue_order_events
+      direction: outgoing
+      label: Processes Messages
+    - to: sns_topic_platform_alerts
+      direction: outgoing
+      label: Publishes Alerts
+  - id: eks_node_group_general
+    name: general-node-group
+    type: aws.compute.EKS
+  - id: eks_node_group_gpu
+    name: gpu-node-group
+    type: aws.compute.EKS
+    relates:
+    - to: s3_bucket_ml_models
+      direction: outgoing
+      label: Loads Models
+  - id: ecr_repository_user_service
+    name: user-service-repo
+    type: aws.compute.ECR
+  - id: ecr_repository_order_service
+    name: order-service-repo
+    type: aws.compute.ECR
+  - id: ecr_repository_ml_service
+    name: ml-service-repo
+    type: aws.compute.ECR
+  - id: rds_cluster_users_db
+    name: users-aurora-cluster
+    type: aws.database.Aurora
+  - id: dynamodb_table_orders
+    name: orders-table
+    type: aws.database.Dynamodb
+  - id: elasticache_replication_group_sessions
+    name: platform-redis
+    type: aws.database.ElastiCache
+  - id: s3_bucket_ml_models
+    name: ml-models-bucket
+    type: aws.storage.S3
+  - id: s3_bucket_app_assets
+    name: app-assets-bucket
+    type: aws.storage.S3
+  - id: sqs_queue_order_events
+    name: order-events-queue
+    type: aws.integration.SQS
+  - id: sns_topic_platform_alerts
+    name: platform-alerts
+    type: aws.integration.SNS
+  - id: cognito_user_pool_platform
+    name: platform-auth
+    type: aws.security.Cognito
+    relates:
+    - to: eks_cluster_main
+      direction: outgoing
+      label: Authenticates
+  - id: wafweb_acl_ingress
+    name: platform-waf
+    type: aws.security.WAF
+    relates:
+    - to: lb_ingress
+      direction: outgoing
+      label: Protects
+  - id: kms_key_platform
+    name: platform-kms
+    type: aws.security.KMS
+    relates:
+    - to: s3_bucket_ml_models
+      direction: outgoing
+      label: Encrypts
+    - to: s3_bucket_app_assets
+      direction: outgoing
+      label: Encrypts
+    - to: rds_cluster_users_db
+      direction: outgoing
+      label: Encrypts
+    - to: dynamodb_table_orders
+      direction: outgoing
+      label: Encrypts
+  - id: cloudwatch_log_group_eks_cluster
+    name: eks-cluster-logs
+    type: aws.management.Cloudwatch
+    relates:
+    - to: eks_cluster_main
+      direction: outgoing
+      label: Stores Logs
+  - id: cloudtrail_platform
+    name: platform-cloudtrail
+    type: aws.management.Cloudtrail
+    relates:
+    - to: s3_bucket_app_assets
+      direction: outgoing
+      label: Logs Access
+  - id: codepipeline_platform_ci
+    name: platform-ci
+    type: aws.devtools.Codepipeline
+    relates:
+    - to: codebuild_project_build_and_test
+      direction: outgoing
+      label: Triggers
+  - id: codebuild_project_build_and_test
+    name: platform-codebuild
+    type: aws.devtools.Codebuild
+    relates:
+    - to: ecr_repository_user_service
+      direction: outgoing
+      label: Pushes Images
+    - to: ecr_repository_order_service
+      direction: outgoing
+      label: Pushes Images
+    - to: ecr_repository_ml_service
+      direction: outgoing
+      label: Pushes Images
+  clusters:
+  - id: network
+    name: Networking
+    resources:
+    - vpc_main
+    - nat_gateway_az_a
+    - nat_gateway_az_b
+    - route53_zone_main
+    - lb_ingress
+    - lb_internal
+  - id: security
+    name: Security
+    resources:
+    - acm_certificate_wildcard
+    - cognito_user_pool_platform
+    - wafweb_acl_ingress
+    - kms_key_platform
+  - id: compute
+    name: Compute
+    resources:
+    - eks_cluster_main
+    - eks_node_group_general
+    - eks_node_group_gpu
+    - ecr_repository_user_service
+    - ecr_repository_order_service
+    - ecr_repository_ml_service
+  - id: database
+    name: Databases
+    resources:
+    - rds_cluster_users_db
+    - dynamodb_table_orders
+    - elasticache_replication_group_sessions
+  - id: storage
+    name: Storage
+    resources:
+    - s3_bucket_ml_models
+    - s3_bucket_app_assets
+  - id: integration
+    name: Integration & Messaging
+    resources:
+    - sqs_queue_order_events
+    - sns_topic_platform_alerts
+  - id: monitoring
+    name: Management & Monitoring
+    resources:
+    - cloudwatch_log_group_eks_cluster
+    - cloudtrail_platform
+  - id: devops
+    name: CI/CD & DevTools
+    resources:
+    - codepipeline_platform_ci
+    - codebuild_project_build_and_test

@@ -1,0 +1,152 @@
+diagram:
+  name: Serverless Orders API LLM
+  direction: top-to-bottom
+  format: png
+  open: true
+  resources:
+  - id: api_gateway_rest_api_main
+    name: orders-api
+    type: aws.network.APIGateway
+    relates:
+    - to: lambda_function_create_order
+      direction: outgoing
+      label: Invokes
+    - to: lambda_function_get_order
+      direction: outgoing
+      label: Invokes
+    - to: cognito_user_pool_customers
+      direction: outgoing
+      label: Authenticates with
+    - to: cloudwatch_log_group_api_logs
+      direction: outgoing
+      label: Logs to
+  - id: lambda_function_create_order
+    name: create-order
+    type: aws.compute.Lambda
+    relates:
+    - to: dynamodb_table_orders
+      direction: outgoing
+      label: Writes to
+    - to: sns_topic_order_events
+      direction: outgoing
+      label: Publishes to
+    - to: s3_bucket_invoices
+      direction: outgoing
+      label: Stores invoice
+  - id: lambda_function_get_order
+    name: get-order
+    type: aws.compute.Lambda
+    relates:
+    - to: dynamodb_table_orders
+      direction: outgoing
+      label: Reads from
+  - id: lambda_function_process_payment
+    name: process-payment
+    type: aws.compute.Lambda
+    relates:
+    - to: dynamodb_table_payments
+      direction: outgoing
+      label: Writes to
+    - to: secretsmanager_secret_stripe_key
+      direction: outgoing
+      label: Retrieves
+  - id: lambda_function_send_notification
+    name: send-notification
+    type: aws.compute.Lambda
+    relates:
+    - to: sns_topic_order_events
+      direction: outgoing
+      label: Publishes to
+  - id: dynamodb_table_orders
+    name: orders-table
+    type: aws.database.Dynamodb
+  - id: dynamodb_table_payments
+    name: payments-table
+    type: aws.database.Dynamodb
+  - id: sqs_queue_order_processing
+    name: order-processing-queue
+    type: aws.integration.SQS
+    relates:
+    - to: sqs_queue_dead_letter
+      direction: outgoing
+      label: DLQ
+    - to: lambda_function_process_payment
+      direction: outgoing
+      label: Triggers
+  - id: sqs_queue_dead_letter
+    name: order-processing-dlq
+    type: aws.integration.SQS
+  - id: sns_topic_order_events
+    name: order-events-topic
+    type: aws.integration.SNS
+    relates:
+    - to: sqs_queue_order_processing
+      direction: outgoing
+      label: Publishes to
+  - id: sfn_state_machine_order_workflow
+    name: order-workflow
+    type: aws.integration.StepFunctions
+    relates:
+    - to: lambda_function_create_order
+      direction: outgoing
+      label: Invokes
+    - to: lambda_function_process_payment
+      direction: outgoing
+      label: Invokes
+    - to: lambda_function_send_notification
+      direction: outgoing
+      label: Invokes
+  - id: s3_bucket_invoices
+    name: invoices-bucket
+    type: aws.storage.S3
+  - id: cognito_user_pool_customers
+    name: customer-auth
+    type: aws.security.Cognito
+  - id: cloudwatch_log_group_api_logs
+    name: api-logs
+    type: aws.management.Cloudwatch
+  - id: kms_key_encryption
+    name: orders-encryption-key
+    type: aws.security.KMS
+    relates:
+    - to: s3_bucket_invoices
+      direction: outgoing
+      label: Encrypts
+    - to: dynamodb_table_orders
+      direction: outgoing
+      label: Encrypts
+    - to: dynamodb_table_payments
+      direction: outgoing
+      label: Encrypts
+    - to: secretsmanager_secret_stripe_key
+      direction: outgoing
+      label: Encrypts
+  - id: secretsmanager_secret_stripe_key
+    name: stripe-api-key
+    type: aws.security.SecretsManager
+  clusters:
+  - id: compute
+    name: Compute
+    resources:
+    - lambda_function_create_order
+    - lambda_function_get_order
+    - lambda_function_process_payment
+    - lambda_function_send_notification
+  - id: database
+    name: Databases
+    resources:
+    - dynamodb_table_orders
+    - dynamodb_table_payments
+  - id: integration
+    name: Integration & Messaging
+    resources:
+    - sqs_queue_order_processing
+    - sqs_queue_dead_letter
+    - sns_topic_order_events
+    - sfn_state_machine_order_workflow
+  - id: security
+    name: Security
+    resources:
+    - cognito_user_pool_customers
+    - kms_key_encryption
+    - secretsmanager_secret_stripe_key

@@ -3,6 +3,8 @@ import yaml
 import json
 import re
 import os
+import logging
+import boto3
 from datetime import datetime
 from pathlib import Path
 from .diagrams_as_code_reference import (
@@ -14,9 +16,135 @@ from .diagrams_as_code_reference import (
     get_service_type_for_component
 )
 
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# LLM helper — calls Bedrock directly using config from .agent.yaml
+# ---------------------------------------------------------------------------
+
+def _load_bedrock_config() -> dict:
+    """Load Bedrock model config from .agent.yaml so we reuse the same model."""
+    defaults = {
+        "model_id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+        "region_name": "us-west-2",
+    }
+    try:
+        cfg_path = Path(__file__).parent.parent.parent / ".agent.yaml"
+        if cfg_path.exists():
+            cfg = yaml.safe_load(cfg_path.read_text())
+            kwargs = cfg.get("provider", {}).get("kwargs", {})
+            return {
+                "model_id": kwargs.get("model_id", defaults["model_id"]),
+                "region_name": kwargs.get("region_name", defaults["region_name"]),
+            }
+    except Exception:
+        pass
+    return defaults
+
+
+def _call_bedrock(prompt: str, max_tokens: int = 4096) -> str:
+    """Make a direct boto3 call to Bedrock for structured inference."""
+    cfg = _load_bedrock_config()
+    client = boto3.client("bedrock-runtime", region_name=cfg["region_name"])
+
+    response = client.invoke_model(
+        modelId=cfg["model_id"],
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+        }),
+    )
+    result = json.loads(response["body"].read())
+    return result["content"][0]["text"]
+
+
+def _parse_json_from_llm(text: str):
+    """Extract a JSON array from LLM output, handling markdown fences."""
+    text = text.strip()
+    if "```" in text:
+        parts = text.split("```")
+        for part in parts:
+            cleaned = part.strip()
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+            if cleaned.startswith("["):
+                try:
+                    return json.loads(cleaned)
+                except json.JSONDecodeError:
+                    continue
+    if text.startswith("["):
+        return json.loads(text)
+    start = text.find("[")
+    end = text.rfind("]")
+    if start != -1 and end != -1:
+        return json.loads(text[start : end + 1])
+    raise ValueError("No JSON array found in LLM response")
+
+
+def _llm_derive_relationships(components: list, architecture_text: str) -> list | None:
+    """Use LLM to dynamically derive relationships between AWS components.
+
+    Returns a list of dicts with from_id, to_id, label, direction — or None if
+    the call fails (signals fallback to deterministic inference).
+    """
+    services_desc = "\n".join(
+        f"  - id: {c['id']},  name: {c['name']},  type: {c['type']},  desc: {c.get('description', '')}"
+        for c in components
+    )
+
+    prompt = f"""You are a Senior AWS Solutions Architect. Given an architecture description and detected AWS services, derive the data-flow relationships between them.
+
+## Architecture Description
+{architecture_text}
+
+## Detected Services
+{services_desc}
+
+## Rules
+1. Only include relationships that are **explicitly described or strongly implied** by the architecture.
+2. Each relationship must represent a real data flow, API call, or dependency.
+3. Do NOT create N×M connections — be selective and precise.
+4. Use descriptive labels (e.g. "HTTPS Request", "Read/Write", "Triggers", "Publishes", "Streams To", "Cache Lookup").
+5. Follow typical AWS patterns: DNS → CDN → LB → Compute → DB/Cache/Queue.
+6. Include monitoring edges only for 2-3 key services, not every service.
+7. Every from_id and to_id MUST be one of the service ids listed above.
+
+## Output
+Return ONLY a JSON array — no markdown, no explanation. Each element:
+{{"from_id": "<source id>", "to_id": "<target id>", "label": "<short label>", "direction": "outgoing"}}
+
+JSON array:"""
+
+    try:
+        raw = _call_bedrock(prompt)
+        relationships = _parse_json_from_llm(raw)
+
+        component_ids = {c["id"] for c in components}
+        valid = []
+        for rel in relationships:
+            fid = rel.get("from_id", "")
+            tid = rel.get("to_id", "")
+            if fid in component_ids and tid in component_ids and fid != tid:
+                valid.append({
+                    "from_id": fid,
+                    "to_id": tid,
+                    "label": rel.get("label", "Data Flow"),
+                    "direction": rel.get("direction", "outgoing"),
+                })
+        logger.info(f"LLM derived {len(valid)} relationships from {len(relationships)} returned")
+        return valid if valid else None
+    except Exception as e:
+        logger.warning(f"LLM relationship inference failed, falling back to deterministic: {e}")
+        return None
+
 
 @tool
-def convert_architecture_to_yaml(architecture_design: str, diagram_name: str = "AWS Architecture", output_folder: str = None, additional_categories: str = None) -> str:
+def convert_architecture_to_yaml(architecture_design: str, diagram_name: str = "AWS Architecture", output_folder: str = None, additional_categories: str = None, use_llm: str = "true") -> str:
     """
     Convert AWS architecture design text to diagrams-as-code YAML format and save to folder.
     
@@ -24,10 +152,17 @@ def convert_architecture_to_yaml(architecture_design: str, diagram_name: str = "
     into a structured YAML file compatible with diagrams-as-code. It identifies AWS components,
     their relationships, and data flows to create a visual diagram specification.
     
+    When use_llm is "true" (default), the tool calls the LLM to dynamically derive
+    relationships between services based on the architecture description, instead of
+    using predefined heuristic patterns. Falls back to deterministic inference if the
+    LLM call fails.
+    
     Args:
         architecture_design: The complete architecture design text output from aws_architecture_designer
         diagram_name: The name for the diagram (default: "AWS Architecture")
         output_folder: Optional folder name. If not provided, uses sanitized diagram name with timestamp
+        additional_categories: Optional comma-separated list of additional categories to include
+        use_llm: "true" to use LLM for relationship inference (default), "false" for deterministic
     
     Returns:
         Status message with file path and YAML content preview
@@ -258,63 +393,64 @@ def convert_architecture_to_yaml(architecture_design: str, diagram_name: str = "
         for component in default_components:
             service_categories[component['category']].append(component)
     
-    # FLEXIBILITY: More adaptive relationship generation
+    # --- Relationship inference ---
+    relationship_method = "none"
     if len(components) > 1:
-        # Use LLM-based intelligent relationship generation
-        # Analyze the architecture text to determine logical connections
-        architecture_analysis = f"""
-        Architecture Description: {architecture_design}
-        
-        Detected Components:
-        {chr(10).join([f"- {c['name']} ({c['type']}): {c['description']}" for c in components])}
-        
-        Based on this architecture description, determine the logical data flows and relationships between these components. 
-        Consider typical AWS architecture patterns, data flow directions, and service dependencies.
-        """
-        
-        # Create a more selective relationship approach
-        # Only connect services that are logically adjacent or have direct dependencies
-        
-        # First, create a list of services in the order they appear in the text
-        service_order = []
-        arch_lower = architecture_design.lower()
-        
-        for component in components:
-            service_name = component['name'].lower()
-            pos = arch_lower.find(service_name)
-            if pos != -1:
-                service_order.append((pos, component))
-        
-        # Sort by position in text
-        service_order.sort(key=lambda x: x[0])
-        
-        # Generate relationships only between adjacent services or logical pairs
-        for i, (pos, component) in enumerate(service_order):
-            component_relationships = []
-            
-            # Only create relationships to the next few services (not all subsequent ones)
-            for j in range(i + 1, min(i + 3, len(service_order))):  # Only next 2 services
-                target_pos, target_component = service_order[j]
-                
-                # Check if these services should be logically connected
-                if should_connect_services(component, target_component, architecture_design):
-                    relationship = create_logical_relationship(component, target_component)
-                    if relationship:
-                        component_relationships.append(relationship)
-            
-            # Add monitoring relationship to CloudWatch if it exists
-            cloudwatch_component = next((c for c in components if 'cloudwatch' in c['name'].lower()), None)
-            if cloudwatch_component and component['id'] != cloudwatch_component['id']:
-                if any(aws_service in component['type'].lower() for aws_service in ['aws.']):
-                    component_relationships.append({
-                        "to": cloudwatch_component['id'],
-                        "direction": "outgoing",
-                        "label": "Monitoring"
+        llm_succeeded = False
+
+        # Try LLM-driven relationship inference first (if enabled)
+        if use_llm.lower() == "true":
+            llm_rels = _llm_derive_relationships(components, architecture_design)
+            if llm_rels:
+                rel_by_source: dict = {}
+                for rel in llm_rels:
+                    rel_by_source.setdefault(rel["from_id"], []).append({
+                        "to": rel["to_id"],
+                        "direction": rel["direction"],
+                        "label": rel["label"],
                     })
-            
-            # Add relationships to component if any were found
-            if component_relationships:
-                component['relates'] = component_relationships
+                for component in components:
+                    if component["id"] in rel_by_source:
+                        component["relates"] = rel_by_source[component["id"]]
+                llm_succeeded = True
+                relationship_method = "llm"
+
+        # Fallback: deterministic heuristic-based inference
+        if not llm_succeeded:
+            relationship_method = "deterministic"
+            service_order = []
+            arch_lower = architecture_design.lower()
+
+            for component in components:
+                service_name = component['name'].lower()
+                pos = arch_lower.find(service_name)
+                if pos != -1:
+                    service_order.append((pos, component))
+
+            service_order.sort(key=lambda x: x[0])
+
+            for i, (pos, component) in enumerate(service_order):
+                component_relationships = []
+
+                for j in range(i + 1, min(i + 3, len(service_order))):
+                    target_pos, target_component = service_order[j]
+
+                    if should_connect_services(component, target_component, architecture_design):
+                        relationship = create_logical_relationship(component, target_component)
+                        if relationship:
+                            component_relationships.append(relationship)
+
+                cloudwatch_component = next((c for c in components if 'cloudwatch' in c['name'].lower()), None)
+                if cloudwatch_component and component['id'] != cloudwatch_component['id']:
+                    if any(aws_service in component['type'].lower() for aws_service in ['aws.']):
+                        component_relationships.append({
+                            "to": cloudwatch_component['id'],
+                            "direction": "outgoing",
+                            "label": "Monitoring"
+                        })
+
+                if component_relationships:
+                    component['relates'] = component_relationships
     
     # Build the final YAML structure
     yaml_structure["diagram"]["resources"] = components
@@ -336,12 +472,14 @@ def convert_architecture_to_yaml(architecture_design: str, diagram_name: str = "
         f.write(f"yaml_file={yaml_filename}\n")
         f.write(f"output_folder={output_folder}\n")
     
+    rel_label = "LLM-derived (dynamic)" if relationship_method == "llm" else "deterministic (heuristic)"
+
     return f"""✅ Architecture YAML Generated Successfully!
 
 📁 **Output Folder**: {output_folder}/
 📄 **YAML File**: {yaml_path}
 📊 **Components**: {len(components)} AWS services detected
-🔗 **Relationships**: {yaml_output.count('relates:')} connections generated
+🔗 **Relationships**: {yaml_output.count('relates:')} connections generated ({rel_label})
 
 📋 **YAML Preview:**
 {yaml_output[:500]}...

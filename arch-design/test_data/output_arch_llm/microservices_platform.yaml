@@ -1,0 +1,201 @@
+diagram:
+  name: Microservices Platform
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: '0.6'
+      ranksep: '1.2'
+    node:
+      shape: box
+      style: rounded,filled
+      fillcolor: lightblue
+    edge:
+      style: solid
+      color: darkblue
+      fontsize: '10'
+  resources:
+  - id: cloudfront
+    name: CloudFront
+    type: aws.network.CloudFront
+    description: Content Delivery Network
+    relates:
+    - to: application_load_balancer
+      direction: outgoing
+      label: Forwards Requests
+    - to: s3
+      direction: outgoing
+      label: Serves Static Assets
+  - id: route_53
+    name: Route 53
+    type: aws.network.Route53
+    description: DNS Management
+    relates:
+    - to: cloudfront
+      direction: outgoing
+      label: Routes Traffic
+  - id: application_load_balancer
+    name: Application Load Balancer
+    type: aws.network.ElbApplicationLoadBalancer
+    description: Load Balancing
+    relates:
+    - to: ecs
+      direction: outgoing
+      label: Routes Requests
+  - id: aws_waf
+    name: AWS WAF
+    type: aws.security.WAF
+    description: Web Application Firewall
+    relates:
+    - to: application_load_balancer
+      direction: outgoing
+      label: Protects
+  - id: amazon_cognito
+    name: Amazon Cognito
+    type: aws.security.Cognito
+    description: User Authentication
+  - id: aws_kms
+    name: AWS KMS
+    type: aws.security.KMS
+    description: Key Management
+    relates:
+    - to: dynamodb
+      direction: outgoing
+      label: Encrypts
+    - to: aurora
+      direction: outgoing
+      label: Encrypts
+    - to: s3
+      direction: outgoing
+      label: Encrypts
+  - id: secrets_manager
+    name: Secrets Manager
+    type: aws.security.SecretsManager
+    description: Secrets Management
+  - id: ecs
+    name: ECS
+    type: aws.compute.ECS
+    description: Container Orchestration
+    relates:
+    - to: fargate
+      direction: outgoing
+      label: Runs On
+  - id: fargate
+    name: Fargate
+    type: aws.compute.Fargate
+    description: Serverless Containers
+    relates:
+    - to: order_service
+      direction: outgoing
+      label: Hosts
+    - to: payment_service
+      direction: outgoing
+      label: Hosts
+    - to: notification_service
+      direction: outgoing
+      label: Hosts
+  - id: dynamodb
+    name: DynamoDB
+    type: aws.database.Dynamodb
+    description: NoSQL Database
+  - id: rds
+    name: RDS
+    type: aws.database.RDS
+    description: Relational Database
+  - id: aurora
+    name: Aurora
+    type: aws.database.Aurora
+    description: High-Performance Database
+  - id: s3
+    name: S3
+    type: aws.storage.S3
+    description: Object Storage
+  - id: ecr
+    name: ECR
+    type: aws.compute.ECR
+    description: Container Registry
+  - id: sqs
+    name: SQS
+    type: aws.integration.SQS
+    description: Message Queue
+  - id: sns
+    name: SNS
+    type: aws.integration.SNS
+    description: Pub/Sub Messaging
+    relates:
+    - to: sqs
+      direction: outgoing
+      label: Feeds Events
+  - id: users
+    name: Users
+    type: aws.general.Users
+    description: End Users
+    relates:
+    - to: route_53
+      direction: outgoing
+      label: DNS Lookup
+  - id: order_service
+    name: order service
+    type: aws.general.General
+    description: 'Custom or inferred service: order service'
+    relates:
+    - to: amazon_cognito
+      direction: outgoing
+      label: Authenticates
+    - to: dynamodb
+      direction: outgoing
+      label: Writes Orders
+    - to: sns
+      direction: outgoing
+      label: Publishes Events
+    - to: cloudwatch
+      direction: outgoing
+      label: Logs
+    - to: s3
+      direction: outgoing
+      label: Stores Invoices
+  - id: payment_service
+    name: payment service
+    type: aws.general.General
+    description: 'Custom or inferred service: payment service'
+    relates:
+    - to: amazon_cognito
+      direction: outgoing
+      label: Authenticates
+    - to: secrets_manager
+      direction: outgoing
+      label: Retrieves API Keys
+    - to: aurora
+      direction: outgoing
+      label: Stores Results
+    - to: cloudwatch
+      direction: outgoing
+      label: Logs
+  - id: notification_service
+    name: notification service
+    type: aws.integration.SQS
+    description: 'Custom or inferred service: notification service'
+    relates:
+    - to: amazon_cognito
+      direction: outgoing
+      label: Authenticates
+    - to: sqs
+      direction: outgoing
+      label: Subscribes
+    - to: cloudwatch
+      direction: outgoing
+      label: Logs
+  - id: all_service
+    name: all service
+    type: aws.general.General
+    description: 'Custom or inferred service: all service'
+  - id: cloudwatch
+    name: CloudWatch
+    type: aws.management.Cloudwatch
+    description: 'Custom or inferred service: CloudWatch'
+  - id: waf
+    name: WAF
+    type: aws.security.IAM
+    description: 'Custom or inferred service: WAF'
