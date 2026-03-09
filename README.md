@@ -21,10 +21,14 @@ CDP-Agents/
 │   │   ├── tools/                  # Custom tools for architecture design
 │   │   │   ├── architecture_orchestrator.py
 │   │   │   ├── aws_architecture_designer.py
+│   │   │   ├── architecture_to_yaml.py     # Text → YAML (LLM-driven relationships)
+│   │   │   ├── yaml_to_diagram.py          # YAML → PNG rendering
+│   │   │   ├── tfstate_to_diagram.py       # Terraform state → diagram
 │   │   │   ├── diagrams_as_code_reference.py
 │   │   │   └── ...
 │   │   ├── mcp_client.py           # MCP integration
 │   │   └── mcp_tools.py            # MCP tool loader
+│   ├── test_data/                   # Sample tfstate files for testing
 │   ├── .agent.yaml                 # Agent configuration
 │   ├── requirements.txt            # Python dependencies
 │   └── README.md                   # Agent-specific documentation
@@ -41,7 +45,9 @@ CDP-Agents/
 
 - Python 3.10 or higher
 - Node.js 18+ (for UI assets)
-- Docker (optional, for container mode)
+- Graphviz (`brew install graphviz` on macOS)
+- Docker (optional — required for container mode and Terraform MCP server)
+- AWS credentials configured (for Bedrock LLM and optionally S3 tfstate access)
 
 ### 1. Setup Environment
 
@@ -110,9 +116,58 @@ The Architecture Design Agent is a specialized AI agent that helps design AWS ar
 
 - `analyze_and_question` - Identifies AWS components and generates targeted questions
 - `finalize_architecture` - Creates final design with detailed user answers
-- `convert_architecture_to_yaml` - Converts architecture design to diagrams-as-code YAML
+- `convert_architecture_to_yaml` - Converts architecture design to diagrams-as-code YAML (LLM-driven relationships by default)
 - `generate_diagram_from_yaml` - Creates visual AWS diagrams from YAML specifications
 - `validate_yaml_schema` - Validates YAML against diagrams-as-code schema
+- `read_tfstate` - Reads a Terraform state file (local or S3) and returns a resource summary
+- `tfstate_to_diagram` - Generates an architecture diagram (YAML + PNG) from a Terraform state file
+
+## Terraform State to Diagram
+
+Generate architecture diagrams directly from your Terraform `.tfstate` files — no manual drawing required.
+
+### How It Works
+
+```
+.tfstate (JSON) → Parse Resources → Map to Diagram Types → Infer Relationships → YAML + PNG
+```
+
+1. **Parse** — Reads the `.tfstate` JSON and extracts managed resources, skipping infrastructure plumbing (subnets, security groups, IAM policies, etc.)
+2. **Map** — Looks up each Terraform resource type against a 120+ entry mapping table to find the corresponding `diagrams` library icon (e.g. `aws_lambda_function` → `aws.compute.Lambda`)
+3. **Infer Relationships** — Uses ARN-based lookups and architectural patterns to connect resources (e.g. API Gateway → Lambda, ALB → ECS, SNS → SQS)
+4. **Generate** — Produces a diagrams-as-code YAML file and renders a PNG using Graphviz
+```
+
+### LLM-Enhanced Mode
+
+When `enhance_with_llm='true'`, the tool runs the deterministic pass first, then sends the resource list and auto-inferred relationships to the LLM (via Bedrock) for review. The LLM can add missing connections, remove incorrect ones, and improve labels. Requires AWS Bedrock credentials.
+
+```python
+result = tfstate_to_diagram(
+    source='path/to/terraform.tfstate',
+    diagram_name='My Infrastructure',
+    output_folder='output',
+    enhance_with_llm='true'
+)
+```
+
+### Filtering Resources
+
+Include or exclude specific Terraform resource types:
+
+```python
+result = tfstate_to_diagram(
+    source='terraform.tfstate',
+    diagram_name='Compute Only',
+    include_types='aws_lambda_function,aws_ecs_cluster,aws_ecs_service',
+)
+
+result = tfstate_to_diagram(
+    source='terraform.tfstate',
+    diagram_name='No Monitoring',
+    exclude_types='aws_cloudwatch_log_group,aws_cloudwatch_metric_alarm',
+)
+```
 
 ##  Diagrams-as-Code
 
@@ -242,7 +297,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Built on the [Strands platform](https://strandsagents.com/)
 - Uses [diagrams-as-code](https://github.com/dmytrostriletskyi/diagrams-as-code) for diagram generation
+- Uses [diagrams](https://github.com/mingrammer/diagrams) (Graphviz) for PNG rendering
 - Integrates with [AWS Documentation MCP Server](https://github.com/awslabs/aws-documentation-mcp-server)
+- Integrates with [Terraform MCP Server](https://github.com/hashicorp/terraform-mcp-server)
 
 ---
 
