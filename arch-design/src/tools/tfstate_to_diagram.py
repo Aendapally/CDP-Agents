@@ -791,20 +791,20 @@ def tfstate_to_diagram(
         cat_counts[res["category"]] = cat_counts.get(res["category"], 0) + 1
     cat_summary = ", ".join(f"{v} {k}" for k, v in sorted(cat_counts.items(), key=lambda x: -x[1]))
 
-    return f"""✅ Terraform State → Architecture Diagram Generated!
+    return f""" Terraform State → Architecture Diagram Generated!
 
-📁 **Source**: {source}
-📂 **Output Folder**: {output_folder}/
-📄 **YAML File**: {yaml_path}
-🖼️ **PNG Diagram**: {png_path}
+ **Source**: {source}
+ **Output Folder**: {output_folder}/
+ **YAML File**: {yaml_path}
+ **PNG Diagram**: {png_path}
 
-📊 **Resources**: {len(resources)} AWS services mapped ({cat_summary})
-🔗 **Relationships**: {len(relationships)} connections ({relationship_method})
-🗂️ **Terraform State Version**: {state.get('version')}  |  Serial: {state.get('serial')}
+ **Resources**: {len(resources)} AWS services mapped ({cat_summary})
+ **Relationships**: {len(relationships)} connections ({relationship_method})
+ **Terraform State Version**: {state.get('version')}  |  Serial: {state.get('serial')}
 
 {diagram_result}
 
-📋 **YAML Preview** (first 600 chars):
+ **YAML Preview** (first 600 chars):
 {yaml_content[:600]}...
 """
 
@@ -943,7 +943,7 @@ def _generate_png(diagram_dict: dict, output_path: str) -> str:
                         except Exception:
                             pass
 
-        return f"✅ PNG generated with {len(nodes)} nodes and {rel_count} edges"
+        return f" PNG generated with {len(nodes)} nodes and {rel_count} edges"
 
     except Exception as e:
-        return f"⚠️ PNG generation failed: {e}"
+        return f" PNG generation failed: {e}"
