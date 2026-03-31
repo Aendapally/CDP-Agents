@@ -87,7 +87,7 @@ export AWS_REGION=us-west-2
 # adt dev --env-file .env
 
 # Start the development server
-adt dev --port 8083
+adt dev --port <port>
 ```
 
 Visit http://localhost:8083 to interact with the Architecture Design Agent.
@@ -227,16 +227,6 @@ mcp_servers:
   - name: aws_documentation
     transport: stdio
     command: ["uvx", "awslabs.aws-documentation-mcp-server@latest"]
-```
-
-### Environment Variables
-
-Create a `.env` file with your credentials:
-
-```env
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_REGION=us-west-2
 ```
 
 ##  Development
