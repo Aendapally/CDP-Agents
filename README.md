@@ -1,4 +1,4 @@
-# CDP-Agents: Customer Developer Platform Using AI Agents
+# CDP-Agents: Cloud Developer Platform Using AI Agents
 
 A comprehensive toolkit for building AI agents specialized in Customer Developer Platform (CDP) architecture design and implementation, built on the Strands platform.
 
