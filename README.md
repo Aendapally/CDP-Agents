@@ -286,6 +286,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Acknowledgments
 
 - Built on the [Strands platform](https://strandsagents.com/)
+- Uses [agent-dev-toolkit](https://github.com/awslabs/agent-dev-toolkit)
 - Uses [diagrams-as-code](https://github.com/dmytrostriletskyi/diagrams-as-code) for diagram generation
 - Uses [diagrams](https://github.com/mingrammer/diagrams) (Graphviz) for PNG rendering
 - Integrates with [AWS Documentation MCP Server](https://github.com/awslabs/aws-documentation-mcp-server)
