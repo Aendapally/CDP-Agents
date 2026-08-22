@@ -1,6 +1,6 @@
 # CDP-Agents — A Cloud Developer Platform Built From AI Agents
 
-> **The pitch:** Turn "I need to ship this app to the cloud" into a **reviewed, policy-compliant, automatically-provisioned architecture** — designed, diagrammed, governed, and deployed by a fleet of cooperating AI agents.
+> **The pitch:** Point CDP-Agents at an application codebase. It detects the infrastructure signals in the code, generates the **non-functional requirements** a sound design depends on for the team to confirm, and turns them into a **reviewed, policy-compliant, provisioning-ready architecture** — with system design, security, and operations addressed *up front* rather than deferred to day-2 or day-3 work. Every decision is captured as an **auditable schema document**, traceable back to the requirements, policies, and paved paths it follows.
 >
 > Today this repo ships the **Architecture Design Agent** (requirements → AWS design → diagram) and a **Terraform-state → diagram** tool. That's the first two organs of a much bigger body. **This README describes where we're going — and where you come in.** 👇
 
@@ -8,20 +8,21 @@
 
 ## 🌅 The Vision
 
-Most cloud platform engineering is a relay race of humans: a developer writes requirements, an architect designs, a security reviewer pokes holes, a Cloud Center of Excellence (CCoE) approves, and a platform team finally provisions. It's slow, inconsistent, and the institutional knowledge lives in people's heads.
+Cloud architecture decisions — how a system scales, how it is secured, how it is operated — are frequently settled late: after the application is built, during a pre-production review, or once something breaks in production. By then the non-functional requirements are implicit, the design rationale is undocumented, and compliance is verified reactively. System design, security, and operational concerns end up as day-2 and day-3 work instead of part of the original design.
 
-**CDP-Agents replaces that relay race with an agentic platform.** A developer describes their app in plain language; a coordinated fleet of specialist agents gathers requirements, designs a Well-Architected solution against *your organization's* policies and approved patterns, draws the diagrams, self-reviews against governance rules, routes exceptions to the CCoE, and — once approved — drives the actual provisioning through your platform automation.
+**CDP-Agents moves those decisions to design time.** It analyzes the application codebase for infrastructure signals — frameworks, data stores, external integrations, traffic and state patterns — and from them generates the **non-functional requirements** the architect and team confirm or refine. With those requirements settled, a coordinated set of specialist agents produces a Well-Architected design in which system design, security, and operational detail are first-class outputs, not afterthoughts.
 
-Every decision is grounded in two MCP-served sources of truth:
-- **Cloud Service Provider (CSP) docs & best practices** — so designs use services correctly.
-- **Your org's standards, policies, approved use-cases & IaC registry** — so designs are *compliant by construction*, not compliant-after-rejection.
+Requirements and the resulting architecture are generated and stored as **structured schema documents**, not prose — so they can be **programmatically validated and audited**. Every design decision is **grounded in and traceable back to** its source: the requirements it satisfies, the organizational policies and paved paths it follows, and the cloud-provider best practices it applies.
 
-And it's a **learning loop**: CCoE feedback and observed patterns feed back into agent prompts, guardrails, and the platform engineering roadmap.
+Two MCP-served sources of truth keep the work grounded:
+- **Cloud Service Provider (CSP) documentation & best practices** — so services are used correctly.
+- **Your organization's standards, policies, approved use-cases, paved paths & IaC registry** — so designs are *compliant by construction*.
+
+A feedback loop closes the system: governance decisions and observed patterns refine the agents' guidance and inform the platform engineering roadmap.
 
 ```
-Developer intent  →  Requirements  →  Architecture  →  Diagrams  →  Governance review  →  Provisioning
-   (natural lang)     (scored loop)    (specialist     (as-code)     (auto + CCoE)         (MCP-driven)
-                                        agent panel)
+App codebase  →  Infra signals  →  Non-functional requirements  →  Architecture  →  Diagrams + schema docs  →  Governance  →  Provisioning
+  (source)        (detected)        (generated, team-confirmed)      (traceable)      (auditable)              (policy)       (automated)
 ```
 
 ---
@@ -36,9 +37,9 @@ The diagram below is the north star. Numbers map to the end-to-end flow; **✅ =
 
 | # | Stage | What happens | Status |
 |---|-------|--------------|--------|
-| 1–2 | **CDP ChatBot** (Cloud Developer Platform Agent) | Reads the app repo (source, manifest, existing IaC), builds dependency maps, and chats with the developer to gather intent. Hands a Requirements JSON to the design pipeline. | 📋 |
-| 2.1 | **Clarification loop** | Asks the developer targeted follow-ups based on org policies. | 🚧 |
-| 3–5 | **Requirements Analyzer** | `Requirement Parser` → `Req JSON Representation` → `Req Scoring`, looping until a completeness threshold is met. | 🚧 (req. gathering ✅, scoring loop 📋) |
+| 1–2 | **CDP ChatBot** (Cloud Developer Platform Agent) | Reads the app repo (source, manifest, existing IaC), detects **infrastructure signals**, and builds dependency maps. Generates candidate **non-functional requirements** for the team to confirm, then hands a structured Requirements document to the design pipeline. | 📋 |
+| 2.1 | **Clarification loop** | Asks the team targeted follow-ups based on org policies. | 🚧 |
+| 3–5 | **Requirements Analyzer** | `Requirement Parser` → `Req JSON Representation` → `Req Scoring`, iterating until the functional + non-functional requirements reach a completeness threshold. Output is a structured, auditable schema document. | 🚧 (req. gathering ✅, scoring loop 📋) |
 | 6 | A2A hand-off | Requirements Analyzer → Architecture Lead via agent-to-agent call. | 📋 |
 | 7 | **Architecture Lead Orchestrator** | Runs a *propose → critique → reconcile → re-propose* design loop over a panel of specialist agents. | 📋 |
 | — | **Cloud Specialist Agents** | Capability Mapper · Service Selection · Config & Sizing · Policy & Standards · Security & Compliance · Networking & Connectivity · Cost & FinOps · Reliability & Resilience. | 📋 |
@@ -51,7 +52,7 @@ The diagram below is the north star. Numbers map to the end-to-end flow; **✅ =
 | 25–26 | **Platform Automation Agent** | On approval, consumes approved artifacts and calls the **Platform Engineering MCP Server** to provision (orchestration workflows, IaC registry, deployment status/logs). | 📋 |
 | — | **Learning loop** | CCoE decisions & observed patterns update agent prompts/guardrails and feed the Public Cloud Platform Jira backlog / engineering roadmap. | 📋 |
 
-**Artifacts** are versioned in an artifact repository throughout: `Req JSON`, `Architecture Summary`, `Architecture as Code (YAML)`, `Architecture Diagram`.
+**Artifacts** are versioned as structured schema documents in an artifact repository throughout — `Req JSON`, `Architecture Summary`, `Architecture as Code (YAML)`, `Architecture Diagram` — so every stage is programmatically auditable and each design decision traces back to the requirements, policies, and paved paths behind it.
 
 ---
 
